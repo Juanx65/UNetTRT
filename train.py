@@ -17,16 +17,19 @@ else:
 
 device = torch.device("cuda:0" if train_on_gpu else "cpu")
 
+# Hyperparameters
+num_filters = 29
+val_dropout = 0.089735
+learning_rate = 0.000410
+batch_size = 128
 
 # Datos de entrenamiento
 x_train, x_valid, y_train, y_valid = load_data()
 
-x_train = torch.tensor(x_train).float().to(device)
-y_train = torch.tensor(y_train).unsqueeze(1).float().to(device)
-x_valid = torch.tensor(x_valid).float().to(device)
-y_valid = torch.tensor(y_valid).unsqueeze(1).float().to(device)
-
-batch_size = 128
+x_train = torch.tensor(x_train).float()
+y_train = torch.tensor(y_train).unsqueeze(1).float()
+x_valid = torch.tensor(x_valid).float()
+y_valid = torch.tensor(y_valid).unsqueeze(1).float()
 
 tensor_dataset = TensorDataset(x_train, y_train)
 train_loader = DataLoader(tensor_dataset, batch_size=batch_size, shuffle=True)
@@ -34,13 +37,12 @@ train_loader = DataLoader(tensor_dataset, batch_size=batch_size, shuffle=True)
 tensor_dataset = TensorDataset(x_valid, y_valid)
 valid_loader = DataLoader(tensor_dataset, batch_size=batch_size, shuffle=False)
 
-model = U_Net()
+# Cargar modelo
+model = U_Net(n1=num_filters, dropout_rate=val_dropout)
 model.to(device)
-
 torchsummary.summary(model, input_size=(3, 88, 32))
-
 loss_function = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.000410)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # Entrenamiento
 valid_loss_min = np.Inf
@@ -49,7 +51,10 @@ for epoch in range(n_epoch):
     train_loss = 0.0
     valid_loss = 0.0
     for batch_idx, (x_batch, y_batch) in enumerate(train_loader):
-        
+
+        x_batch = x_batch.to(device)
+        y_batch = y_batch.to(device)
+
         y_pred = model(x_batch) # Forward
         loss = loss_function(y_pred, y_batch) # Cálculo de la pérdida
 
@@ -61,6 +66,9 @@ for epoch in range(n_epoch):
         train_loss += loss.item()*x_batch.size(0)
     
     for batch_idx, (x_batch, y_batch) in enumerate(valid_loader):
+
+        x_batch = x_batch.to(device)
+        y_batch = y_batch.to(device)
 
         y_pred = model(x_batch)
         loss = loss_function(y_pred, y_batch)
@@ -76,7 +84,6 @@ for epoch in range(n_epoch):
     valid_loss = valid_loss / len(x_valid)
     if (epoch+1) % 1 == 0:
         print('Epoch: {}/{} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch + 1, n_epoch, train_loss,valid_loss))
-
 
 
 """ # Prueba del modelo entrenado
