@@ -22,7 +22,7 @@ device = torch.device("cuda:0" if train_on_gpu else "cpu")
 num_filters = 29
 val_dropout = 0.089735
 learning_rate = 0.000410
-batch_size = 128
+batch_size = 32
 
 # Datos de entrenamiento
 x_train, x_valid, y_train, y_valid, y_mean, y_std = load_data()
