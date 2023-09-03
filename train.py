@@ -6,6 +6,7 @@ import numpy as np
 from models.unet import U_Net
 from utils.load_data import load_data
 from torch.utils.data import TensorDataset, DataLoader
+from utils.functions import mae_percentage
 
 
 train_on_gpu = torch.cuda.is_available()
@@ -24,7 +25,7 @@ learning_rate = 0.000410
 batch_size = 128
 
 # Datos de entrenamiento
-x_train, x_valid, y_train, y_valid = load_data()
+x_train, x_valid, y_train, y_valid, y_mean, y_std = load_data()
 
 x_train = torch.tensor(x_train).float()
 y_train = torch.tensor(y_train).unsqueeze(1).float()
@@ -71,9 +72,9 @@ for epoch in range(n_epoch):
         y_batch = y_batch.to(device)
 
         y_pred = model(x_batch)
-        loss = loss_function(y_pred, y_batch)
+        loss = mae_percentage(y_pred, y_batch, y_mean, y_std)
 
-        valid_loss += loss.item()*x_batch.size(0)
+        valid_loss +=  loss.item()*x_batch.size(0)
 
     if( valid_loss < valid_loss_min):
         print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model '.format(valid_loss_min, valid_loss))

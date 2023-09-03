@@ -88,4 +88,4 @@ def load_data():
     del x2
     del x3
 
-    return x_train,x_valid, y_train, y_valid
+    return x_train,x_valid, y_train, y_valid, y_mean, y_std
