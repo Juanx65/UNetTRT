@@ -19,9 +19,9 @@ else:
 device = torch.device("cuda:0" if train_on_gpu else "cpu")
 
 # Hyperparameters
-num_filters = 29
-val_dropout = 0.089735
-learning_rate = 0.000410
+num_filters = 64
+val_dropout = 0.0
+learning_rate = 0.001
 batch_size = 32
 
 # Datos de entrenamiento
