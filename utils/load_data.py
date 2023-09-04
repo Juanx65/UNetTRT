@@ -3,6 +3,9 @@ import os
 from utils.functions import max_mean, add_noise,standarize,format_to_train
 from sklearn.model_selection import train_test_split
 
+import random
+import matplotlib.pyplot as plt
+
 INPUT_1 = 'R'
 INPUT_2 = 'G'
 INPUT_3 = 'B'
@@ -86,6 +89,33 @@ def load_data():
     del x1
     del x2
     del x3
+
+    L = 50
+    for _ in range(3):
+        plt.rcParams['figure.figsize'] = [10, 4]
+        n = random.randint(0,len(x_train))
+        print(n)
+        print("r shape: ", r[n].shape) #r shape:  (32, 40)
+        print("z shape: ", z[n].shape) #z shape:  (88,)
+        print("r shape: ", x[n,0,:,:]) #x shape:(3, 88)
+        print("y shape: ", y[n]) #x shape:(3, 88)
+        print("y shape: ", fs[n]) #x shape:(3, 88)
+
+        """ plt.imshow(x[n,0,:,:], cmap= 'jet')
+        plt.show() """
+
+        plt.subplot(151)
+        plt.imshow(x[n,0,:,:], cmap= 'jet'), plt.title('$P_{R}$')
+        plt.subplot(152)
+        plt.imshow(x[n,1,:,:], cmap= 'jet'), plt.title('$P_{G}$')
+        plt.subplot(153)
+        plt.imshow(x[n,2,:,:], cmap= 'jet'), plt.title('$P_{B}$')
+        plt.subplot(154)
+        plt.imshow(y[n], cmap = 'jet'), plt.title('$T_s$')
+        plt.subplot(155)
+        plt.imshow(fs[n]*1e6, cmap = 'jet'), plt.title('$f_{s}$')
+        #plt.colorbar()
+        plt.show()
 
     return x_train,x_valid, y_train, y_valid, y_mean, y_std
 

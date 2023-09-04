@@ -18,10 +18,10 @@ else:
 device = torch.device("cuda:0" if train_on_gpu else "cpu")
 
 # Hyperparameters
-num_filters = 29
-val_dropout = 0.089735
-learning_rate = 0.000410
-batch_size = 128
+num_filters = 64
+val_dropout = 0.0
+learning_rate = 0.001
+batch_size = 32
 
 x_test, y_test, y_mean, y_std, fs_test, r_test, z_test= load_test_data()
 
@@ -49,13 +49,34 @@ y_test_pred = y_test_pred.cpu()
 
 print("x_test size", x_test.size())
 
-N = random.randint(0,len(x_test)-1)
-print(N)
+#N = random.randint(0,len(x_test)-1)
+N = 11
 
 y_test[N][fs_test[N] <= 0.05e-6] = 0
 y_test_pred[N][fs_test[N] <= 0.05e-6] = 0
+print(N)
+
+plt.rcParams['figure.figsize'] = [12, 4]
+
+plt.subplot(131)
+plt.imshow(y_test[N,:,:], cmap = 'jet')
+plt.title('$Groundtruth$')
+plt.colorbar()
+
+plt.subplot(132)
+plt.imshow(y_test_pred[N], cmap = 'jet')
+plt.title('$U-Net$')
+plt.colorbar()
+plt.tight_layout()
 
 abs_err = np.abs(y_test[N] - y_test_pred[N])
+plt.subplot(133)
+plt.imshow(abs_err, cmap = 'jet')
+plt.title('$\Delta T_{s}$')
+plt.colorbar(ticks=MaxNLocator(6))
+
+plt.show()
+
 print('Abs. error max:', abs_err.max())
 print('Abs. error min:', abs_err.min())
 print('Abs. error mean:', abs_err.mean())
