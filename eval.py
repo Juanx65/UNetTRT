@@ -59,19 +59,19 @@ print(N)
 plt.rcParams['figure.figsize'] = [12, 4]
 
 plt.subplot(131)
-plt.imshow(y_test[N,:,:], cmap = 'jet')
+plt.imshow(y_test[N,:,:], cmap = 'jet', vmin=1500, vmax=2205)
 plt.title('$Groundtruth$')
 plt.colorbar()
 
 plt.subplot(132)
-plt.imshow(y_test_pred[N], cmap = 'jet')
+plt.imshow(y_test_pred[N], cmap = 'jet', vmin=1500, vmax=2205)
 plt.title('$U-Net$')
 plt.colorbar()
 plt.tight_layout()
 
 abs_err = np.abs(y_test[N] - y_test_pred[N])
 plt.subplot(133)
-plt.imshow(abs_err, cmap = 'jet')
+plt.imshow(abs_err, cmap = 'jet', vmin=0, vmax=50)
 plt.title('$\Delta T_{s}$')
 plt.colorbar(ticks=MaxNLocator(6))
 
