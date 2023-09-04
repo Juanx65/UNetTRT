@@ -58,7 +58,7 @@ def format_to_train(x1,x2,x3):
     x2_t = np.transpose(x2, [0,3, 1, 2])
     x3_t = np.transpose(x3, [0,3, 1, 2])
     xd = np.concatenate((x1_t,x2_t, x3_t), axis=1)
-    #xd = np.transpose(xd, [0,2, 3, 1]) # para entrenar con pytorch size: (N, C, H, W)
+    #xd = np.transpose(xd, [0,1,2, 3]) # para entrenar con pytorch size: (N, C, H, W)
     return xd
 
 def max_mean(B1):

@@ -4,7 +4,7 @@ import torch.optim as optim
 import torchsummary
 import numpy as np
 from models.unet import U_Net
-from utils.load_data import load_data
+from utils.load_data import MyDataLoader
 from torch.utils.data import TensorDataset, DataLoader
 from utils.functions import mae_percentage
 
@@ -25,7 +25,8 @@ learning_rate = 0.001
 batch_size = 32
 
 # Datos de entrenamiento
-x_train, x_valid, y_train, y_valid, y_mean, y_std = load_data()
+my_data_loader = MyDataLoader()
+x_train, x_valid, y_train, y_valid, y_mean, y_std = my_data_loader.load_data()
 
 x_train = torch.tensor(x_train).float()
 y_train = torch.tensor(y_train).unsqueeze(1).float()
@@ -45,7 +46,7 @@ torchsummary.summary(model, input_size=(3, 88, 32))
 loss_function = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-# Entrenamiento
+""" # Entrenamiento
 valid_loss_min = np.Inf
 n_epoch = 100
 for epoch in range(n_epoch):
@@ -85,7 +86,7 @@ for epoch in range(n_epoch):
     valid_loss = valid_loss / len(x_valid)
     if (epoch+1) % 1 == 0:
         print('Epoch: {}/{} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch + 1, n_epoch, train_loss,valid_loss))
-
+ """
 """
 # Prueba del modelo entrenado
 with torch.no_grad():
