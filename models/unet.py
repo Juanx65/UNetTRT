@@ -12,10 +12,10 @@ class DoubleConv(nn.Module):
             mid_ch = out_ch
         self.double_conv = nn.Sequential(
             nn.Conv2d(in_ch, mid_ch, kernel_size=3, stride = 1, padding=1, bias=True),
-            nn.BatchNorm2d(mid_ch),
+            nn.BatchNorm2d(mid_ch, momentum=0.99 ),
             nn.ReLU(inplace=True),
             nn.Conv2d(mid_ch, out_ch, kernel_size=3, stride= 1, padding=1, bias=True),
-            nn.BatchNorm2d(out_ch),
+            nn.BatchNorm2d(out_ch, momentum=0.99 ),
             nn.ReLU(inplace=True)
         )
 
@@ -51,7 +51,10 @@ class down_block(nn.Module):
 class up_block(nn.Module):
     def __init__(self, in_ch, out_ch,dropout_rate):
         super(up_block, self).__init__()
-        self.up = nn.ConvTranspose2d(in_ch, in_ch // 2, kernel_size=2, stride=2)
+        self.up = nn.Sequential(
+            nn.ConvTranspose2d(in_ch, in_ch // 2, kernel_size=3, stride=2),
+            nn.BatchNorm2d(in_ch // 2, momentum=0.99 )
+        )
         self.conv = nn.Sequential(
             DoubleConv(in_ch,out_ch),
             nn.Dropout2d(p=dropout_rate)
