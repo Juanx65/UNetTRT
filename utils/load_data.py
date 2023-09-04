@@ -90,7 +90,7 @@ def load_data():
     del x2
     del x3
 
-    L = 50
+    """ L = 50
     for _ in range(3):
         plt.rcParams['figure.figsize'] = [10, 4]
         n = random.randint(0,len(x_train))
@@ -100,9 +100,6 @@ def load_data():
         print("r shape: ", x[n,0,:,:]) #x shape:(3, 88)
         print("y shape: ", y[n]) #x shape:(3, 88)
         print("y shape: ", fs[n]) #x shape:(3, 88)
-
-        """ plt.imshow(x[n,0,:,:], cmap= 'jet')
-        plt.show() """
 
         plt.subplot(151)
         plt.imshow(x[n,0,:,:], cmap= 'jet'), plt.title('$P_{R}$')
@@ -115,7 +112,7 @@ def load_data():
         plt.subplot(155)
         plt.imshow(fs[n]*1e6, cmap = 'jet'), plt.title('$f_{s}$')
         #plt.colorbar()
-        plt.show()
+        plt.show() """
 
     return x_train,x_valid, y_train, y_valid, y_mean, y_std
 

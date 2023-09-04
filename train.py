@@ -19,14 +19,14 @@ else:
 device = torch.device("cuda:0" if train_on_gpu else "cpu")
 
 # Hyperparameters
-num_filters = 64
+num_filters = 29
 val_dropout = 0.0
 learning_rate = 0.001
 batch_size = 32
 
 # Datos de entrenamiento
 x_train, x_valid, y_train, y_valid, y_mean, y_std = load_data()
-""" 
+
 x_train = torch.tensor(x_train).float()
 y_train = torch.tensor(y_train).unsqueeze(1).float()
 x_valid = torch.tensor(x_valid).float()
@@ -85,9 +85,9 @@ for epoch in range(n_epoch):
     valid_loss = valid_loss / len(x_valid)
     if (epoch+1) % 1 == 0:
         print('Epoch: {}/{} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch + 1, n_epoch, train_loss,valid_loss))
- """
 
-""" # Prueba del modelo entrenado
+"""
+# Prueba del modelo entrenado
 with torch.no_grad():
     test_data = torch.tensor([[5.0]])
     predicted = model(test_data)

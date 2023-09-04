@@ -49,8 +49,8 @@ y_test_pred = y_test_pred.cpu()
 
 print("x_test size", x_test.size())
 
-#N = random.randint(0,len(x_test)-1)
-N = 11
+N = random.randint(0,len(x_test)-1)
+#N = 11
 
 y_test[N][fs_test[N] <= 0.05e-6] = 0
 y_test_pred[N][fs_test[N] <= 0.05e-6] = 0
