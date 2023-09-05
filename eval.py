@@ -101,9 +101,9 @@ def eval_exp(opt):
     # LOAD DATA
     my_data_loader = MyDataLoader()
     _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
-    x_test, t_emi = my_data_loader.load_data_exp()
+    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, t_emi, r, z = my_data_loader.load_data_exp()
 
-    x_test = torch.tensor(x_test).float().to(device)
+    Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
 
 
     ####LOAD######
@@ -114,45 +114,80 @@ def eval_exp(opt):
 
     # Eval 
     with torch.no_grad():
-            output = model(x_test)
+            output = model(Py_exp_interp)
 
-    x_test = x_test.cpu()
+    Py_exp_interp = Py_exp_interp.cpu().numpy()
 
-    y_test_pred = destandarize(output, y_mean, y_std)
-    y_test_pred = y_test_pred.squeeze(1)
+    print("ourput shape: ", output.shape)
 
-    y_test_pred = y_test_pred.cpu()
+    t_cgan_caseC = destandarize(output, y_mean, y_std)[0,0,:,:]
+    t_cgan_caseC= t_cgan_caseC.cpu().numpy()
 
-    t_emi = t_emi[::-1]
     mask = t_emi<1
-    y_test_pred = np.ma.masked_where(mask, y_test_pred[0])
+    t_emi = np.ma.masked_where(mask, t_emi)
+    t_bemi = np.ma.masked_where(mask, t_bemi)
+    print("t_cgan_caseC shape: ", t_cgan_caseC.shape)
+    t_cgan_caseC = t_cgan_caseC[::-1] #torch.flip(t_cgan_caseC, [0])
 
-    plt.rcParams['figure.figsize'] = [12, 4]
-    plt.subplot(141)
-    plt.imshow(x_test[0,0,:,:], cmap = 'jet', vmax=x_test.max() , vmin=x_test.min())
-    plt.title('$U-Net$')
-    plt.colorbar()
-    plt.tight_layout()
+    t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
+    for i in range(3):
+        Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
 
-    plt.subplot(142)
-    plt.imshow(x_test[0,1,:,:], cmap = 'jet', vmax=x_test.max(), vmin=x_test.min())
-    plt.title('$U-Net$')
-    plt.colorbar()
-    plt.tight_layout()
+    plt.rcParams['figure.figsize'] = [10, 4]
+    fig, ax = plt.subplots(1,6)
+    im = axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R')
+    axcontourf(ax[1],r,z, Py_exp_interp[0,1,:,:][::-1], 'G')
+    axcontourf(ax[2],r,z, Py_exp_interp[0,2,:,:][::-1], 'B')
+    
 
-    plt.subplot(143)
-    plt.imshow(x_test[0,2,:,:], cmap = 'jet', vmax=x_test.max(), vmin=x_test.min())
-    plt.title('$U-Net$')
-    plt.colorbar()
-    plt.tight_layout()
+    axcontourf(ax[3],r_emi,z_emi, t_emi,r'$T_{s}$(EMI)',levels=np.linspace(1500,2100,50))
+    im3 = axcontourf(ax[4],r,z, t_bemi,r'$T_{s}$ (BEMI)',levels=np.linspace(1500,2100,50))
+    axcontourf(ax[5],r,z,t_cgan_caseC,r'$T_{s}$(U-Net)',levels=np.linspace(1500,2100,50))
 
-    plt.subplot(144)
-    plt.imshow(y_test_pred, cmap = 'jet', vmin=1500, vmax=2205)
-    plt.title('$U-Net$')
-    plt.colorbar()
-    plt.tight_layout()
+    ax[0].set_facecolor("darkblue")  
+    ax[1].set_facecolor("darkblue")  
+    ax[2].set_facecolor("darkblue")  
+    ax[3].set_facecolor("darkblue")  
+    ax[4].set_facecolor("darkblue")  
+    ax[5].set_facecolor("darkblue")    
+    cbar = fig.colorbar(im3, ticks=MaxNLocator(6))#.tick_values(1500,2300))
+    fig.tight_layout()
+    #fig.savefig(f'./results_U-Net_case_A_A.jpg', bbox_inches='tight', dpi = 300, quality = 100)
+    #scipy.io.savemat('./results/ts_UNET-CBAM_BEMI_B2040_dataA_case_A_training_noise_'+str(percent_noise)+'.mat', {'UNET':t_cgan_caseC2,'r':r,'z':z})
+
+    plt.rcParams['figure.figsize'] = [6, 4]
+    fig, ax = plt.subplots(1,3)
+    axcontourf(ax[0],r_emi,z_emi, t_emi,r'$T_{s}(EMI)$',levels= np.linspace(1500,2100,50))
+    im3 = axcontourf(ax[1],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-80,80,50),CMAP='bwr')
+    abs_err = t_cgan_caseC - t_emi
+    axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Net')
+    abs_err[abs_err>100] = 100
+    abs_err[abs_err<-100] = -100
+    
+    ax[0].set_facecolor("darkblue")  
+    ax[1].set_facecolor("darkblue")  
+    ax[2].set_facecolor("darkblue")  
+    cbar = fig.colorbar(im3, ticks=MaxNLocator(6))#.tick_values(1500,2300))
+    fig.tight_layout()
 
     plt.show()
+
+    print('Abs. error max:', abs_err.max())
+    print('Abs. error min:', abs_err.min())
+    print('Abs. error mean:', abs_err.mean())
+    print('Abs. error stddev:', abs_err.std())
+    print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
+
+
+def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
+        x = ax.contourf(r, z,data,levels, cmap = CMAP)#,vmin =VMIN, vmax = VMAX)
+        ax.set_xlabel('r (cm)')
+        ax.set_ylabel('z (cm)')
+        ax.set_title(title)
+        ax.set_xlim(0,0.45)
+        ax.set_ylim(Y_MIN, Y_MAX)
+        ax.set_xticks(ticks=[0, 0.25])#, labels=[0, T_0.shape[1]])
+        return x 
 
 def parse_opt():
     parser = argparse.ArgumentParser()

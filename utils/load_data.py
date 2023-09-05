@@ -264,7 +264,7 @@ class MyDataLoader():
 
         print("x shape: ", Py_exp_interp.shape)
 
-        return Py_exp_interp, t_emi
+        return Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, t_emi, r, z
     
 
 def resize_temp(r, z, Tp):
