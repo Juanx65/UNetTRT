@@ -56,8 +56,8 @@ print("x_test size", x_test.size())
 #N = random.randint(0,len(x_test)-1)
 N = 11
 
-y_test[N][fs_test[N] <= 0.05e-6] = 0
-y_test_pred[N][fs_test[N] <= 0.05e-6] = 0
+#y_test[N][fs_test[N] <= 0.05e-6] = 0
+#y_test_pred[N][fs_test[N] <= 0.05e-6] = 0
 #print(N)
 
 plt.rcParams['figure.figsize'] = [12, 4]
@@ -96,6 +96,8 @@ plt.subplot(176)
 plt.imshow(abs_err, cmap = 'jet', vmin=0, vmax=50)
 plt.title('$\Delta T_{s}$')
 plt.colorbar(ticks=MaxNLocator(6))
+
+
 """ t_emi = t_emi[::-1]
 mask = t_emi<1
 y_test_pred = np.ma.masked_where(mask, y_test_pred[0])

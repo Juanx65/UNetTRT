@@ -29,7 +29,7 @@ class MyDataLoader():
         self.x3 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[20:,:,:]
         self.y = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[20:,:,:]
         self.fs = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[20:,:,:]
-        self.r = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r.npy')))[20:,:]
+        self.r = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r_m.npy')))[20:,:]
         self.z = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:,:]
 
         self.x1 = self.x1[:,:,:32]
@@ -85,12 +85,12 @@ class MyDataLoader():
 
         x_train, x_valid, y_train, y_valid = train_test_split(x, self.y, test_size=0.2, shuffle=True)
 
-        x_train[:,:,:,0] = standarize(x_train[:,:,:,0], self.x1_mean, self.x1_std)
-        x_valid[:,:,:,0] = standarize(x_valid[:,:,:,0], self.x1_mean, self.x1_std)
-        x_train[:,:,:,1] = standarize(x_train[:,:,:,1], self.x2_mean, self.x2_std)
-        x_valid[:,:,:,1] = standarize(x_valid[:,:,:,1], self.x2_mean, self.x2_std)
-        x_train[:,:,:,2] = standarize(x_train[:,:,:,2], self.x3_mean, self.x3_std)
-        x_valid[:,:,:,2] = standarize(x_valid[:,:,:,2], self.x3_mean, self.x3_std)
+        x_train[:,0,:,:] = standarize(x_train[:,0,:,:], self.x1_mean, self.x1_std)
+        x_valid[:,0,:,:] = standarize(x_valid[:,0,:,:], self.x1_mean, self.x1_std)
+        x_train[:,1,:,:] = standarize(x_train[:,1,:,:], self.x2_mean, self.x2_std)
+        x_valid[:,1,:,:] = standarize(x_valid[:,1,:,:], self.x2_mean, self.x2_std)
+        x_train[:,2,:,:] = standarize(x_train[:,2,:,:], self.x3_mean, self.x3_std)
+        x_valid[:,2,:,:] = standarize(x_valid[:,2,:,:], self.x3_mean, self.x3_std)
 
         y_train = standarize(y_train, self.y_mean, self.y_std)
         y_valid = standarize(y_valid, self.y_mean, self.y_std)
@@ -131,7 +131,7 @@ class MyDataLoader():
         x3_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[:20,:,:]
         y_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[:20,:,:]
         fs_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[:20,:,:]
-        r_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r.npy')))[:20,:]
+        r_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r_m.npy')))[:20,:]
         z_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[:20,:]
 
         x1_test = x1_test[:,:,:32]
@@ -176,9 +176,9 @@ class MyDataLoader():
         print(x1_test.shape)
         x_test = format_to_train(x1_test,x2_test,x3_test)
 
-        x_test[:,:,:,0] = standarize(x_test[:,:,:,0], self.x1_mean, self.x1_std)
-        x_test[:,:,:,1] = standarize(x_test[:,:,:,1], self.x2_mean, self.x2_std)
-        x_test[:,:,:,2] = standarize(x_test[:,:,:,2], self.x3_mean, self.x3_std)
+        x_test[:,0,:,:] = standarize(x_test[:,0,:,:], self.x1_mean, self.x1_std)
+        x_test[:,1,:,:] = standarize(x_test[:,1,:,:], self.x2_mean, self.x2_std)
+        x_test[:,2,:,:] = standarize(x_test[:,2,:,:], self.x3_mean, self.x3_std)
 
 
         print("x_test shape: ", x_test.shape)
@@ -254,13 +254,13 @@ class MyDataLoader():
         del Py_exp
 
         x_max = np.max([Py_exp_interp])
-        Py_exp_interp[0,:,:] = Py_exp_interp[0,:,:] [::-1]/x_max
-        Py_exp_interp[1,:,:]  = Py_exp_interp[1,:,:] [::-1]/x_max
-        Py_exp_interp[2,:,:] = Py_exp_interp[2,:,:] [::-1]/x_max
+        Py_exp_interp[:,0,:,:]= Py_exp_interp[:,0,:,:] [::-1]/x_max
+        Py_exp_interp[:,1,:,:]  = Py_exp_interp[:,1,:,:][::-1]/x_max
+        Py_exp_interp[:,2,:,:] = Py_exp_interp[:,2,:,:] [::-1]/x_max
 
-        Py_exp_interp[0,:,:] = standarize(Py_exp_interp[0,:,:] , self.x1_mean, self.x1_std)
-        Py_exp_interp[1,:,:] = standarize(Py_exp_interp[1,:,:] , self.x2_mean, self.x2_std)
-        Py_exp_interp[2,:,:]  = standarize(Py_exp_interp[2,:,:] , self.x3_mean, self.x3_std)
+        Py_exp_interp[:,0,:,:] = standarize(Py_exp_interp[:,0,:,:] , self.x1_mean, self.x1_std)
+        Py_exp_interp[:,1,:,:] = standarize(Py_exp_interp[:,1,:,:] , self.x2_mean, self.x2_std)
+        Py_exp_interp[:,2,:,:]  = standarize(Py_exp_interp[:,2,:,:] , self.x3_mean, self.x3_std)
 
         Py_exp_interp = np.expand_dims(Py_exp_interp, axis=0)
 

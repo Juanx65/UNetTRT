@@ -46,7 +46,7 @@ torchsummary.summary(model, input_size=(3, 88, 32))
 loss_function = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-""" # Entrenamiento
+# Entrenamiento
 valid_loss_min = np.Inf
 n_epoch = 100
 for epoch in range(n_epoch):
@@ -86,7 +86,7 @@ for epoch in range(n_epoch):
     valid_loss = valid_loss / len(x_valid)
     if (epoch+1) % 1 == 0:
         print('Epoch: {}/{} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch + 1, n_epoch, train_loss,valid_loss))
- """
+
 """
 # Prueba del modelo entrenado
 with torch.no_grad():
