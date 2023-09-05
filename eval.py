@@ -88,13 +88,13 @@ def eval(opt):
     plt.title('$\Delta T_{s}$')
     plt.colorbar(ticks=MaxNLocator(6))
 
-    plt.show()
-
     print('Abs. error max:', abs_err.max())
     print('Abs. error min:', abs_err.min())
     print('Abs. error mean:', abs_err.mean())
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/y_test[N].mean())
+
+    plt.show()
 
 def eval_exp(opt):
     print("experiment")
@@ -134,49 +134,52 @@ def eval_exp(opt):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
 
     plt.rcParams['figure.figsize'] = [10, 4]
+
     fig, ax = plt.subplots(1,6)
-    im = axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R')
+    axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R')
     axcontourf(ax[1],r,z, Py_exp_interp[0,1,:,:][::-1], 'G')
     axcontourf(ax[2],r,z, Py_exp_interp[0,2,:,:][::-1], 'B')
     
-
-    axcontourf(ax[3],r_emi,z_emi, t_emi,r'$T_{s}$(EMI)',levels=np.linspace(1500,2100,50))
-    im3 = axcontourf(ax[4],r,z, t_bemi,r'$T_{s}$ (BEMI)',levels=np.linspace(1500,2100,50))
-    axcontourf(ax[5],r,z,t_cgan_caseC,r'$T_{s}$(U-Net)',levels=np.linspace(1500,2100,50))
+    im1=axcontourf(ax[3],r_emi,z_emi, t_emi,r'$T_{s}$(EMI)',levels=np.linspace(1500,2100,50))
+    im2=axcontourf(ax[4],r,z, t_bemi,r'$T_{s}$ (BEMI)',levels=np.linspace(1500,2100,50))
+    im3=axcontourf(ax[5],r,z,t_cgan_caseC,r'$T_{s}$(U-Net)',levels=np.linspace(1500,2100,50))
 
     ax[0].set_facecolor("darkblue")  
     ax[1].set_facecolor("darkblue")  
     ax[2].set_facecolor("darkblue")  
     ax[3].set_facecolor("darkblue")  
     ax[4].set_facecolor("darkblue")  
-    ax[5].set_facecolor("darkblue")    
-    cbar = fig.colorbar(im3, ticks=MaxNLocator(6))#.tick_values(1500,2300))
-    fig.tight_layout()
-    #fig.savefig(f'./results_U-Net_case_A_A.jpg', bbox_inches='tight', dpi = 300, quality = 100)
-    #scipy.io.savemat('./results/ts_UNET-CBAM_BEMI_B2040_dataA_case_A_training_noise_'+str(percent_noise)+'.mat', {'UNET':t_cgan_caseC2,'r':r,'z':z})
+    ax[5].set_facecolor("darkblue")
 
+    fig.colorbar(im1, ticks=MaxNLocator(6))
+    fig.colorbar(im2, ticks=MaxNLocator(6))
+    fig.colorbar(im3, ticks=MaxNLocator(6))
+    fig.tight_layout()
+ 
     plt.rcParams['figure.figsize'] = [6, 4]
     fig, ax = plt.subplots(1,3)
-    axcontourf(ax[0],r_emi,z_emi, t_emi,r'$T_{s}(EMI)$',levels= np.linspace(1500,2100,50))
-    im3 = axcontourf(ax[1],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-80,80,50),CMAP='bwr')
+    im1=axcontourf(ax[0],r_emi,z_emi, t_emi,r'$T_{s}(EMI)$',levels= np.linspace(1500,2100,50))
+    im2=axcontourf(ax[1],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-80,80,50),CMAP='bwr')
     abs_err = t_cgan_caseC - t_emi
-    axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Net')
+    im3=axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Net',levels= np.linspace(-80,80,50),CMAP='bwr')
     abs_err[abs_err>100] = 100
     abs_err[abs_err<-100] = -100
     
     ax[0].set_facecolor("darkblue")  
     ax[1].set_facecolor("darkblue")  
     ax[2].set_facecolor("darkblue")  
-    cbar = fig.colorbar(im3, ticks=MaxNLocator(6))#.tick_values(1500,2300))
+    fig.colorbar(im1, ticks=MaxNLocator(6))
+    fig.colorbar(im2, ticks=MaxNLocator(6))
+    fig.colorbar(im3, ticks=MaxNLocator(6))
     fig.tight_layout()
-
-    plt.show()
 
     print('Abs. error max:', abs_err.max())
     print('Abs. error min:', abs_err.min())
     print('Abs. error mean:', abs_err.mean())
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
+
+    plt.show()
 
 
 def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):

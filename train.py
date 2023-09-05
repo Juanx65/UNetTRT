@@ -75,7 +75,7 @@ def train(opt):
 
         if( valid_loss < valid_loss_min):
             print('Validation loss decreased ({:.6f} --> {:.6f}).  Saving model '.format(valid_loss_min, valid_loss))
-            torch.save(model, 'weights/best.pth')
+            torch.save(model, opt.weights)
             valid_loss_min = valid_loss
         
         train_loss = train_loss / len(x_train)
@@ -91,6 +91,7 @@ def parse_opt():
     parser.add_argument('--dropout', default = 0.089735, type=float,help='percentage dropout to use')
     parser.add_argument('--num_filters', default = 29, type=int,help='Canales de salida de la primera capa conv')
     parser.add_argument('--learning_rate', default = 0.000410, type=float, help='learning rate')
+    parser.add_argument('--weights', default = 'weights/best.pth', type=str, help='directorio y nombre de archivo de donse se guardara el mejor peso entrenado')
     opt = parser.parse_args()
     return opt
 
