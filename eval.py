@@ -25,12 +25,12 @@ batch_size = 32
 
 # LOAD DATA
 my_data_loader = MyDataLoader()
-x_test, y_test, y_mean, y_std, fs_test, r_test, z_test= my_data_loader.load_test_data()
-#_, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
-#x_test, t_emi = my_data_loader.load_data_exp()
+#x_test, y_test, y_mean, y_std, fs_test, r_test, z_test= my_data_loader.load_test_data()
+_, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
+x_test, t_emi = my_data_loader.load_data_exp()
 
 x_test = torch.tensor(x_test).float().to(device)
-y_test = torch.tensor(y_test).float().to(device)
+#y_test = torch.tensor(y_test).float().to(device)
 
 
 ####LOAD######
@@ -44,7 +44,7 @@ with torch.no_grad():
         output = model(x_test)
 
 x_test = x_test.cpu()
-y_test = y_test.cpu()
+#y_test = y_test.cpu()
 
 y_test_pred = destandarize(output, y_mean, y_std)
 y_test_pred = y_test_pred.squeeze(1)
@@ -56,9 +56,9 @@ print("x_test size", x_test.size())
 #N = random.randint(0,len(x_test)-1)
 N = 11
 
-#y_test[N][fs_test[N] <= 0.05e-6] = 0
-#y_test_pred[N][fs_test[N] <= 0.05e-6] = 0
-#print(N)
+""" y_test[N][fs_test[N] <= 0.05e-6] = 0
+y_test_pred[N][fs_test[N] <= 0.05e-6] = 0
+print(N)
 
 plt.rcParams['figure.figsize'] = [12, 4]
 
@@ -95,10 +95,10 @@ abs_err = np.abs(y_test[N] - y_test_pred[N])
 plt.subplot(176)
 plt.imshow(abs_err, cmap = 'jet', vmin=0, vmax=50)
 plt.title('$\Delta T_{s}$')
-plt.colorbar(ticks=MaxNLocator(6))
+plt.colorbar(ticks=MaxNLocator(6)) """
 
 
-""" t_emi = t_emi[::-1]
+t_emi = t_emi[::-1]
 mask = t_emi<1
 y_test_pred = np.ma.masked_where(mask, y_test_pred[0])
 
@@ -125,7 +125,7 @@ plt.subplot(144)
 plt.imshow(y_test_pred, cmap = 'jet', vmin=1500, vmax=2205)
 plt.title('$U-Net$')
 plt.colorbar()
-plt.tight_layout() """
+plt.tight_layout()
 
 plt.show()
 

@@ -98,7 +98,7 @@ class MyDataLoader():
         del x2
         del x3
 
-        L = 50
+        """ L = 50
         for _ in range(3):
             plt.rcParams['figure.figsize'] = [10, 4]
             n = random.randint(0,len(x_train))
@@ -120,7 +120,7 @@ class MyDataLoader():
             plt.subplot(155)
             plt.imshow(self.fs[n]*1e6, cmap = 'jet'), plt.title('$f_{s}$')
             #plt.colorbar()
-            plt.show()
+            plt.show() """
 
         return x_train,x_valid, y_train, y_valid, self.y_mean, self.y_std
 
@@ -187,9 +187,9 @@ class MyDataLoader():
         #plt.contourf(r_test[n], z_test[n],x1_test[n,:,:,0], cmap = 'jet', levels = 50)
         #plt.show()
         
-        for _ in range(3):
+        """ for _ in range(3):
             plt.rcParams['figure.figsize'] = [10, 4]
-            n = random.randint(0,20)
+            n = random.randint(0,19)
             print(n)
             print("r shape: ", r_test[n].shape) #r shape:  (32, 40)
             print("z shape: ", z_test[n].shape) #z shape:  (88,)
@@ -208,13 +208,11 @@ class MyDataLoader():
             plt.subplot(155)
             plt.contourf(r_test[n], z_test[n],fs_test[n]*1e6, cmap = 'jet', levels = 50), plt.title('$f_{s}$')
             #plt.colorbar()
-            plt.show()
+            plt.show() """
 
         return x_test, y_test, self.y_mean, self.y_std, fs_test, r_test, z_test
 
     def load_data_exp(self):
-        Y_MIN = 1
-        Y_MAX = 3.5
         percentage_noise = 0.0
         mat_BEMI = os.path.abspath('npy-PS44/ts_BEMI_B2040_case_A.mat')
         mat_EMI = os.path.abspath('npy-PS44/ts_EMI_case_A.mat')
@@ -235,7 +233,7 @@ class MyDataLoader():
 
         #*****************************************************************+++++++++++++
         # Select the P_B channel and calculate the range of the values in the matrix
-        m_range = np.max(Py_exp[:,:, 1]) #- np.min(Py_rgb[:,:, 0])
+        m_range = np.max(Py_exp[:,:,1]) #- np.min(Py_rgb[:,:, 0])
         # Calculate the standard deviation of the Gaussian noise (0.5% of the range)
         #noise_std = percentage_noise * m_range
         noise_std = (percentage_noise/100) * m_range
@@ -254,13 +252,13 @@ class MyDataLoader():
         del Py_exp
 
         x_max = np.max([Py_exp_interp])
-        Py_exp_interp[:,0,:,:]= Py_exp_interp[:,0,:,:] [::-1]/x_max
-        Py_exp_interp[:,1,:,:]  = Py_exp_interp[:,1,:,:][::-1]/x_max
-        Py_exp_interp[:,2,:,:] = Py_exp_interp[:,2,:,:] [::-1]/x_max
+        Py_exp_interp[0,:,:] = Py_exp_interp[0,:,:][::-1]/x_max
+        Py_exp_interp[1,:,:] = Py_exp_interp[1,:,:][::-1]/x_max
+        Py_exp_interp[2,:,:] = Py_exp_interp[2,:,:][::-1]/x_max
 
-        Py_exp_interp[:,0,:,:] = standarize(Py_exp_interp[:,0,:,:] , self.x1_mean, self.x1_std)
-        Py_exp_interp[:,1,:,:] = standarize(Py_exp_interp[:,1,:,:] , self.x2_mean, self.x2_std)
-        Py_exp_interp[:,2,:,:]  = standarize(Py_exp_interp[:,2,:,:] , self.x3_mean, self.x3_std)
+        Py_exp_interp[0,:,:] = standarize(Py_exp_interp[0,:,:] , self.x1_mean, self.x1_std)
+        Py_exp_interp[1,:,:] = standarize(Py_exp_interp[1,:,:] , self.x2_mean, self.x2_std)
+        Py_exp_interp[2,:,:]  = standarize(Py_exp_interp[2,:,:] , self.x3_mean, self.x3_std)
 
         Py_exp_interp = np.expand_dims(Py_exp_interp, axis=0)
 
