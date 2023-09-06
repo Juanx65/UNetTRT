@@ -2,18 +2,15 @@ import torch
 import onnx
 import os
 from io import BytesIO
-from models.unet import U_Net
 
 BATCH_SIZE = 1
 
-
 current_directory = os.path.dirname(os.path.abspath(__file__))
-parent_directory = os.path.dirname(current_directory)
 weights_path = 'weights/best.pth'
-weights_path = os.path.join(parent_directory,weights_path)
+weights_path = os.path.join(current_directory,weights_path)
 
+print("weights path: ", weights_path)
 
-model = U_Net() # por alguna razon debe importarse un modelo o si no se pone triste esta cosa
 model = torch.load(weights_path)
 model.to('cuda:0')
 model.eval()

@@ -1,5 +1,4 @@
 import torch
-import random
 import os
 import numpy as np
 from utils.models.unet import U_Net
@@ -270,6 +269,87 @@ def eval_exp_TRT(opt):
 
     plt.show()
 
+def compare_exp(opt):
+    print("compare TRT to Vanilla")
+    # LOAD DATA
+    my_data_loader = MyDataLoader()
+    _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
+    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, t_emi, r, z = my_data_loader.load_data_exp()
+
+    Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
+
+    #---------------------------  TRT EVAL -------------------------------------#
+    ####LOAD######
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    engine_path = os.path.join(current_directory,'weights/best.engine')
+
+    Engine = engine.TRTModule(engine_path, device)
+    Engine.set_desired(['outputs'])
+
+    with torch.set_grad_enabled(False):
+            output = Engine(Py_exp_interp)
+
+    t_cgan_caseC = destandarize(output, y_mean, y_std)[0,0,:,:]
+    t_cgan_caseC= t_cgan_caseC.cpu().numpy()
+
+    mask = t_emi<1
+    t_emi = np.ma.masked_where(mask, t_emi)
+    t_bemi = np.ma.masked_where(mask, t_bemi)
+    print("t_cgan_caseC shape: ", t_cgan_caseC.shape)
+    t_cgan_caseC = t_cgan_caseC[::-1]
+
+    t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
+
+    # ----------------- VANILLA ---------------------------------------------------#
+
+    ####LOAD######
+    model = U_Net(n1=opt.num_filters, dropout_rate=opt.dropout)
+    model = torch.load(opt.weights)
+    model.to(device)
+    model.eval()
+
+    # Eval 
+    with torch.no_grad():
+            output = model(Py_exp_interp)
+
+    t_cgan_caseC_vanilla = destandarize(output, y_mean, y_std)[0,0,:,:]
+    t_cgan_caseC_vanilla = t_cgan_caseC_vanilla.cpu().numpy()
+    t_cgan_caseC_vanilla = t_cgan_caseC_vanilla[::-1]
+
+    t_cgan_caseC_vanilla = np.ma.masked_where(mask,t_cgan_caseC_vanilla)
+
+    # ----------------------- -------------------------------------------------------#
+
+    Py_exp_interp = Py_exp_interp.cpu().numpy()
+    for i in range(3):
+        Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
+    
+    #-------------------- PLOTS --------------------------------------------------#
+    plt.rcParams['figure.figsize'] = [6, 4]
+    fig, ax = plt.subplots(1,3)
+    imVLLA=axcontourf(ax[0],r,z,t_cgan_caseC_vanilla,r'$T_{s}$(U-Net VANILLA)',levels=np.linspace(1500,2100,50))
+    imTRT=axcontourf(ax[1],r,z,t_cgan_caseC,r'$T_{s}$(U-Net TRT)',levels=np.linspace(1500,2100,50))
+    abs_err = t_cgan_caseC - t_cgan_caseC_vanilla
+    imDTA=axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Nets',levels= np.linspace(-80,80,50),CMAP='bwr')
+    abs_err[abs_err>100] = 100
+    abs_err[abs_err<-100] = -100
+    
+    ax[0].set_facecolor("darkblue")  
+    ax[1].set_facecolor("darkblue")  
+    ax[2].set_facecolor("darkblue")  
+    fig.colorbar(imVLLA, ticks=MaxNLocator(6))
+    fig.colorbar(imTRT, ticks=MaxNLocator(6))
+    fig.colorbar(imDTA, ticks=MaxNLocator(6))
+    fig.tight_layout()
+
+    print('Abs. error max:', abs_err.max())
+    print('Abs. error min:', abs_err.min())
+    print('Abs. error mean:', abs_err.mean())
+    print('Abs. error stddev:', abs_err.std())
+    print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
+    
+    plt.show()
+
 
 def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
         x = ax.contourf(r, z,data,levels, cmap = CMAP)#,vmin =VMIN, vmax = VMAX)
@@ -291,12 +371,15 @@ def parse_opt():
     parser.add_argument('--weights', default= 'weights/best.pth', type=str, help='path to weights')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
     parser.add_argument('--TRT', action='store_true', help='si es experimento ')
+    parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')
     opt = parser.parse_args()
     return opt
 
 def main(opt):
 
-    if(opt.TRT):
+    if(opt.compare):
+        compare_exp(opt)
+    elif(opt.TRT):
         eval_exp_TRT(opt)
     elif(opt.experiment):
         eval_exp(opt)

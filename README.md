@@ -52,6 +52,16 @@ Por ahora solo se puede probar TRT con la data experimental, para hacerlo, debes
 python eval.py --TRT --weights='weights/best.engine'
 ```
 
+### Eval Compare TRT vs Vanilla
+
+Para comparar la red optimizada con TRT vs la red sin optimizacion (VANILLA) se puede de la siguiente manera:
+
+```
+python eval.py --compare
+```
+
+por ahora usa por default el path al engine `weights/best.engine` y otros detalles x parametrizar
+
 ---
 
 ## TensorRT Optimization
@@ -61,10 +71,10 @@ python eval.py --TRT --weights='weights/best.engine'
 Luego de entrenar la data y tener el archivo `.pth`, es necesario transformarlo a un `.onnx` con el siguiente codigo
 
 ```
-python utils/onnx_transform.py
+python onnx_transform.py
 ```
 
-actualmente se espera que los pesos esten en `weights/best.pth` prox lo parametrisare...
+actualmente se espera que los pesos esten en `weights/best.pth` prox parametrizar...
 tmb se espera que la entrada del modelo a transfrormar sea de [1,3, 128, 32]. tmb lo dejare parametrisado luego...
 
 ### ENGINE
@@ -72,7 +82,7 @@ tmb se espera que la entrada del modelo a transfrormar sea de [1,3, 128, 32]. tm
 Luego de tener el `.onnx` se puede optimizar usando TensorRT con el siguiente script
 
 ```
-python utils/build_trt.py --weights='weights/best.onnx' --input_shape=[1,3, 128, 32] --fp16 
+python build_trt.py --weights='weights/best.onnx' --input_shape=[1,3, 128, 32] --fp16 
 ```
 
 ### INT8
