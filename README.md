@@ -44,6 +44,41 @@ Para evaluar en imagenes reales:
 python eval.py --experiment
 ```
 
+### Eval TRT experimental
+
+Por ahora solo se puede probar TRT con la data experimental, para hacerlo, debes usar este codigo
+
+```
+python eval.py --TRT --weights='weights/best.engine'
+```
+
+---
+
+## TensorRT Optimization
+
+### ONNX 
+
+Luego de entrenar la data y tener el archivo `.pth`, es necesario transformarlo a un `.onnx` con el siguiente codigo
+
+```
+python utils/onnx_transform.py
+```
+
+actualmente se espera que los pesos esten en `weights/best.pth` prox lo parametrisare...
+tmb se espera que la entrada del modelo a transfrormar sea de [1,3, 128, 32]. tmb lo dejare parametrisado luego...
+
+### ENGINE
+
+Luego de tener el `.onnx` se puede optimizar usando TensorRT con el siguiente script
+
+```
+python utils/build_trt.py --weights='weights/best.onnx' --input_shape=[1,3, 128, 32] --fp16 
+```
+
+### INT8
+
+falta crear la funcion para el pre procesamiento de los datos para hacer el in8
+
 ---
 
 # REFERENICAS A SOLUCIONES DE ERRORES

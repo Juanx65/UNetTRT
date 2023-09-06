@@ -1,5 +1,4 @@
 import argparse
-
 from models.engine import EngineBuilder
 
 BATCH_SIZE = 1
@@ -13,7 +12,7 @@ def parse_args():
     parser.add_argument('--input_shape',
                         nargs='+',
                         type=int,
-                        default=[BATCH_SIZE,3, 128, 88],
+                        default=[BATCH_SIZE,3, 128, 32],
                         help='Model input shape, el primer valor es el batch_size, 128)]')
     parser.add_argument('--fp32',
                         action='store_true',

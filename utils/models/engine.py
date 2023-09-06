@@ -19,7 +19,14 @@ import logging
 import sys
 import random
 import torchvision.transforms as transforms
-import utils.processing as processing
+
+try:
+    import processing as preprocessing
+except ImportError:
+    try:
+        import utils.processing as preprocessing
+    except ImportError:
+        print("No se pudo importar el módulo de procesamiento.")
 
 import onnx
 import tensorrt as trt
@@ -33,10 +40,10 @@ logging.basicConfig(level=logging.DEBUG,
 logger = logging.getLogger(__name__)
 
 CHANNEL = 1
-HEIGHT = 28
-WIDTH = 28
+HEIGHT = 128
+WIDTH = 32
 
-BATCH_SIZE = 2048
+BATCH_SIZE = 1
 BATCH_SIZE_CALIBRATION = 1
 
 CACHE_FOLDER = "cache/"
@@ -88,8 +95,8 @@ class EngineBuilder:
             if int8 and self.builder.platform_has_fast_int8:
                 ## Carga de los datos
                 #transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-                calibration_file = get_calibration_files(calibration_data="mnist_png/")
-                Int8_calibrator = ImagenetCalibrator(calibration_files=calibration_file, preprocess_func=processing.preprocess_mnist)
+                calibration_file = get_calibration_files(calibration_data="Imagnet/")
+                Int8_calibrator = ImagenetCalibrator(calibration_files=calibration_file, preprocess_func=preprocessing.preprocess_imagenet)
 
                 #builder.max_batch_size = 128                                                                                                        
                 #builder.max_workspace_size = common.GiB(100)     

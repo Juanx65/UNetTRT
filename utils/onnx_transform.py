@@ -1,18 +1,23 @@
 import torch
 import onnx
+import os
 from io import BytesIO
+from models.unet import U_Net
 
 BATCH_SIZE = 1
 
-# Ruta al archivo .hdf5 con los pesos
+
+current_directory = os.path.dirname(os.path.abspath(__file__))
+parent_directory = os.path.dirname(current_directory)
 weights_path = 'weights/best.pth'
+weights_path = os.path.join(parent_directory,weights_path)
 
-# Cargar el modelo de Keras desde los pesos en formato .hdf5
 
+model = U_Net() # por alguna razon debe importarse un modelo o si no se pone triste esta cosa
 model = torch.load(weights_path)
 model.to('cuda:0')
 model.eval()
-fake_input = torch.randn([BATCH_SIZE,3, 128, 88]).to('cuda:0')
+fake_input = torch.randn([BATCH_SIZE,3, 128, 32]).to('cuda:0')
 for _ in range(2):
     model(fake_input)
 save_path = weights_path.replace('.pth', '.onnx')
