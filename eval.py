@@ -347,12 +347,12 @@ def compare_exp(opt):
     print('Abs. error mean:', abs_err.mean())
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
-    
+
     plt.show()
 
 
 def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
-        x = ax.contourf(r, z,data,levels, cmap = CMAP)#,vmin =VMIN, vmax = VMAX)
+        x = ax.contourf(r, z,data,levels, cmap = CMAP)#, antialiased=False)#,vmin =VMIN, vmax = VMAX)
         ax.set_xlabel('r (cm)')
         ax.set_ylabel('z (cm)')
         ax.set_title(title)

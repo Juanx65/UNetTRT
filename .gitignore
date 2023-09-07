@@ -3,3 +3,4 @@ env/*
 weights/*
 results/*
 imgs_experimentales/*
+cache/*

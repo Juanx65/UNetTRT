@@ -41,36 +41,19 @@ OUTPUT = 'ts'
 def process_llamas(image_dir):
 
     ## PRe PRE procesamiento-------------------------------------------------------#
-
     x1 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_1 + '.npy')))[20:,:,:]
     x2 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_2 + '.npy')))[20:,:,:]
     x3 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[20:,:,:]
-    y = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[20:,:,:]
-    fs = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[20:,:,:]
-    r = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r_m.npy')))[20:,:]
-    z = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:,:]
-
-    mat_BEMI = os.path.abspath('npy-PS44/ts_BEMI_B2040_case_A.mat')
-    mat = scipy.io.loadmat(mat_BEMI)
-    r_exp = mat.get('r')
-    z_exp = mat.get('z')
 
     x1 = x1[:,:,:32]
     x2 = x2[:,:,:32]
     x3 = x3[:,:,:32]
-    y = y[:,:,:32]
-    fs = fs[:,:,:32]
-    r = r[:,:32]
-    z = z[:,:]
 
     for i in range(len(x2)):
         x_max = np.max([x1[i].max(),x2[i].max(),x3[i].max()])
         x2[i] = x2[i][::-1]/x_max
         x3[i] = x3[i][::-1]/x_max
         x1[i] = x1[i][::-1]/x_max
-        y[i]= y[i][::-1]
-        fs[i] = fs[i][::-1]
-        z[i] = z[i][::-1]
         
     x1_mean = np.mean(x1[:].mean())
     x1_std = np.mean(x1[:].std())
@@ -80,14 +63,6 @@ def process_llamas(image_dir):
 
     x3_mean = np.mean(x3[:].mean())
     x3_std = np.mean(x3[:].std())
-
-    y_mean = np.mean(y[:].mean())
-    y_std = np.mean(y[:].std())
-
-    x1_max_mean, _ = max_mean(x1)
-    x2_max_mean, _  = max_mean(x2)
-    x3_max_mean, _  = max_mean(x3)
-
 
     ## autentica carga de datos-----------------------------------------------------#
 
@@ -120,47 +95,39 @@ def process_llamas(image_dir):
     m =  np.where(Py_rot[h_px,r1:r2,1] == Py_rot[h_px,r1:r2,1].min())[0][0]
     center_x = r1 + m
     border_x  = center_x + r_x
-    #plt.plot(Py_rot[h_px,r1:r2,1])
-    #plt.show()
+    
     Py_rgb  = np.zeros((3,2048,border_x - center_x)) 
     Py_rgb[0,:,:] = Py_rot[:,center_x:border_x, 0]
     Py_rgb[1,:,:] = Py_rot[:,center_x:border_x, 1]
     Py_rgb[2,:,:] = Py_rot[:,center_x:border_x, 2]
 
-    print("py rgb shape: ", Py_rgb.shape)
+    scale = 37294.15914879467
+    offset_z = -0.3/100
+    nx = r_x     
+    Zmin = int(2048)  # initial height to consider
+    Zmax = 0  # max height to consider
+    offset_z = -0.3/100
+    nz = Zmin - Zmax
+
+    r_exp = np.linspace(0, nx - 1, nx) / scale
+    z_exp = np.linspace(Zmin - Zmax, 0, nz) / scale + offset_z
 
     Py_exp_interp = np.empty((3,128,32))
-    print("mori?")
+
     r, z, Py_exp_interp[0,:,:] = resize_temp(r_exp, z_exp, Py_rgb[0,:,:])
     r, z, Py_exp_interp[1,:,:] = resize_temp(r_exp, z_exp, Py_rgb[1,:,:])
     r, z, Py_exp_interp[2,:,:] = resize_temp(r_exp, z_exp, Py_rgb[2,:,:])
-
-    print("mori? 2")
 
     x_max = np.max([Py_exp_interp])
     Py_exp_interp[0,:,:] = Py_exp_interp[0,:,:][::-1]/x_max
     Py_exp_interp[1,:,:] = Py_exp_interp[1,:,:][::-1]/x_max
     Py_exp_interp[2,:,:] = Py_exp_interp[2,:,:][::-1]/x_max
 
-    print("yahora?")
-
     Py_exp_interp[0,:,:] = standarize(Py_exp_interp[0,:,:] , x1_mean, x1_std)
     Py_exp_interp[1,:,:] = standarize(Py_exp_interp[1,:,:] , x2_mean, x2_std)
     Py_exp_interp[2,:,:] = standarize(Py_exp_interp[2,:,:] , x3_mean, x3_std)
 
-    print("Py_exp_interp shape: ", Py_exp_interp.shape)
-
-    #Py_exp_interp = np.expand_dims(Py_exp_interp, axis=0)
-
     #print("Py_exp_interp shape: ", Py_exp_interp.shape)
-
-    """ plt.figure(figsize=(6, 4))
-    plt.subplot(1, 3, 1), plt.imshow(Py_rgb[0,:,:], cmap='plasma', vmin = 0, vmax = Py_rgb.max())
-    plt.title(r'$P_B$')
-    plt.subplot(1, 3, 2), plt.imshow(Py_rgb[1,:,:], cmap='plasma', vmin = 0, vmax = Py_rgb.max())
-    plt.title(r'$P_G$')
-    plt.subplot(1, 3, 3), plt.imshow(Py_rgb[2,:,:], cmap='plasma', vmin = 0, vmax = Py_rgb.max())
-    plt.title(r'$P_R$'), plt.colorbar() """
     return Py_exp_interp
 
 def standarize(data, mean, std):
