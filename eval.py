@@ -8,7 +8,7 @@ from utils.load_data import MyDataLoader
 from matplotlib.ticker import MaxNLocator
 import argparse
 
-from utils.models import engine
+from utils import engine
 
 train_on_gpu = torch.cuda.is_available()
 

@@ -1,5 +1,5 @@
 import argparse
-from utils.models.engine import EngineBuilder
+from utils.engine import EngineBuilder
 
 BATCH_SIZE = 1
 
