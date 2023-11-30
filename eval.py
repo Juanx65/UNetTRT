@@ -295,9 +295,9 @@ def compare_exp(opt):
     Engine.set_desired(['outputs'])
 
     with torch.set_grad_enabled(False):
-            output = Engine(Py_exp_interp)
+            output_trt = Engine(Py_exp_interp)
 
-    t_cgan_caseC = destandarize(output, y_mean, y_std)[0,0,:,:]
+    t_cgan_caseC = destandarize(output_trt, y_mean, y_std)[0,0,:,:]
     t_cgan_caseC= t_cgan_caseC.cpu().numpy()
 
     mask = t_emi<1
@@ -318,15 +318,22 @@ def compare_exp(opt):
 
     # Eval 
     with torch.no_grad():
-            output = model(Py_exp_interp)
+            output_vnll = model(Py_exp_interp)
 
-    t_cgan_caseC_vanilla = destandarize(output, y_mean, y_std)[0,0,:,:]
+    t_cgan_caseC_vanilla = destandarize(output_vnll, y_mean, y_std)[0,0,:,:]
     t_cgan_caseC_vanilla = t_cgan_caseC_vanilla.cpu().numpy()
     t_cgan_caseC_vanilla = t_cgan_caseC_vanilla[::-1]
 
     t_cgan_caseC_vanilla = np.ma.masked_where(mask,t_cgan_caseC_vanilla)
 
-    # ----------------------- -------------------------------------------------------#
+    # ----------------------- --closeness value-------------------------------------#
+
+    close_values = torch.isclose(output_vnll, output_trt, rtol=1e-2).sum().item()
+
+    print(output_vnll.numel())
+    print("Closeness Value {:.2f} %".format( (close_values / output_vnll.numel())*100 ))
+
+    #--------------------------------------------------------------------------------#
 
     Py_exp_interp = Py_exp_interp.cpu().numpy()
     for i in range(3):
