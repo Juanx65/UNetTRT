@@ -74,20 +74,19 @@ Luego de entrenar la data y tener el archivo `.pth`, es necesario transformarlo 
 python onnx_transform.py --weights weights/best.pth --input_shape 1 3 128 32
 ```
 
-actualmente se espera que los pesos esten en `weights/best.pth` prox parametrizar...
-tmb se espera que la entrada del modelo a transfrormar sea de [1,3, 128, 32]. tmb lo dejare parametrisado luego...
+Note:
+
+input shape es B C H W
+
+... comprobar si es BCHW o BCWH ...?
 
 ### ENGINE
 
 Luego de tener el `.onnx` se puede optimizar usando TensorRT con el siguiente script
 
 ```
-python build_trt.py --weights weights/best.onnx --input_shape 1 3 128 32 --fp16 
+python build_trt.py --weights weights/best.onnx --input_shape 1 3 128 32 --int8
 ```
-
-### INT8
-
-falta crear la funcion para el pre procesamiento de los datos para hacer el in8
 
 ---
 
