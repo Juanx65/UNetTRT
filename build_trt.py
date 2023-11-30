@@ -12,7 +12,7 @@ def parse_args():
     parser.add_argument('--input_shape',
                         nargs='+',
                         type=int,
-                        default=[BATCH_SIZE,3, 128, 32],
+                        default=[BATCH_SIZE,3, 224,224],
                         help='Model input shape, el primer valor es el batch_size, 128)]')
     parser.add_argument('--fp32',
                         action='store_true',
@@ -31,7 +31,7 @@ def parse_args():
                         action='store_true',
                         help='Build seg model by onnx')
     args = parser.parse_args()
-    assert len(args.input_shape) == 4
+    #assert len(args.input_shape) == 4
     return args
 
 

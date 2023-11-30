@@ -10,6 +10,9 @@ import argparse
 
 from utils import engine
 
+import logging
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
 train_on_gpu = torch.cuda.is_available()
 
 if not train_on_gpu:
@@ -18,6 +21,8 @@ else:
     print('CUDA is available. Using GPU')
 
 device = torch.device("cuda:0" if train_on_gpu else "cpu")
+
+os.environ['CUDA_MODULE_LOADING'] = 'LAZY'
 
 def eval(opt):
     # LOAD DATA
@@ -95,6 +100,7 @@ def eval(opt):
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/y_test[N].mean())
 
+    plt.savefig('outputs/img/eval.png')
     plt.show()
 
 def eval_exp(opt):
@@ -180,6 +186,7 @@ def eval_exp(opt):
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
 
+    plt.savefig('outputs/img/eval_exp.png')
     plt.show()
 
 def eval_exp_TRT(opt):
@@ -194,7 +201,7 @@ def eval_exp_TRT(opt):
 
     ####LOAD######
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    engine_path = os.path.join(current_directory,opt.weights)
+    engine_path = os.path.join(current_directory,opt.engine)
 
     Engine = engine.TRTModule(engine_path, device)
     Engine.set_desired(['outputs'])
@@ -267,6 +274,7 @@ def eval_exp_TRT(opt):
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
 
+    plt.savefig('outputs/img/eval_exp_trt.png')
     plt.show()
 
 def compare_exp(opt):
@@ -281,7 +289,7 @@ def compare_exp(opt):
     #---------------------------  TRT EVAL -------------------------------------#
     ####LOAD######
     current_directory = os.path.dirname(os.path.abspath(__file__))
-    engine_path = os.path.join(current_directory,'weights/best.engine')
+    engine_path = os.path.join(current_directory,opt.engine)
 
     Engine = engine.TRTModule(engine_path, device)
     Engine.set_desired(['outputs'])
@@ -348,8 +356,8 @@ def compare_exp(opt):
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
 
+    plt.savefig('outputs/img/compare_exp.png')
     plt.show()
-
 
 def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
         x = ax.contourf(r, z,data,levels, cmap = CMAP)#, antialiased=False)#,vmin =VMIN, vmax = VMAX)
@@ -369,8 +377,9 @@ def parse_opt():
     parser.add_argument('--num_filters', default = 29, type=int,help='Canales de salida de la primera capa conv')
     parser.add_argument('--learning_rate', default = 0.000410, type=float, help='learning rate')
     parser.add_argument('--weights', default= 'weights/best.pth', type=str, help='path to weights')
+    parser.add_argument('--engine', default= 'weights/best.engine', type=str, help='path to engine')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
-    parser.add_argument('--TRT', action='store_true', help='si es experimento ')
+    parser.add_argument('--trt', action='store_true', help='si es experimento ')
     parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')
     opt = parser.parse_args()
     return opt
@@ -379,7 +388,7 @@ def main(opt):
 
     if(opt.compare):
         compare_exp(opt)
-    elif(opt.TRT):
+    elif(opt.trt):
         eval_exp_TRT(opt)
     elif(opt.experiment):
         eval_exp(opt)

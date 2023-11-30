@@ -1,6 +1,8 @@
-npy-PS44/*
+datasets/*
 env/*
 weights/*
 results/*
 imgs_experimentales/*
 cache/*
+__pycache__/
+outputs/*

@@ -16,7 +16,7 @@ INPUT_3 = 'B'
 
 OUTPUT = 'ts'
 
-NPY_DIR2 = 'npy-PS44'
+NPY_DIR2 = 'datasets/npy-PS44'
 
 PERCENT_NOISE = 0.0025
 ADD_NOISE = True
@@ -214,8 +214,8 @@ class MyDataLoader():
 
     def load_data_exp(self):
         percentage_noise = 0.0
-        mat_BEMI = os.path.abspath('npy-PS44/ts_BEMI_B2040_case_A.mat')
-        mat_EMI = os.path.abspath('npy-PS44/ts_EMI_case_A.mat')
+        mat_BEMI = os.path.abspath('datasets/npy-PS44/ts_BEMI_B2040_case_A.mat')
+        mat_EMI = os.path.abspath('datasets/npy-PS44/ts_EMI_case_A.mat')
 
         mat = scipy.io.loadmat(mat_EMI)
         ts_emi_A = mat.get('EMI')

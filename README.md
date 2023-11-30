@@ -10,7 +10,7 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 
 instalar requirements con
 
-obs: quizas faltan otros requierements que se me olvido añadir... revisar
+obs: para instalar el torch de los requirements, es necesario contar con cuda 12.2
 
 ```
 pip install -r requirements.txt
@@ -71,7 +71,7 @@ por ahora usa por default el path al engine `weights/best.engine` y otros detall
 Luego de entrenar la data y tener el archivo `.pth`, es necesario transformarlo a un `.onnx` con el siguiente codigo
 
 ```
-python onnx_transform.py
+python onnx_transform.py --weights weights/best.pth --input_shape 1 3 128 32
 ```
 
 actualmente se espera que los pesos esten en `weights/best.pth` prox parametrizar...
@@ -82,7 +82,7 @@ tmb se espera que la entrada del modelo a transfrormar sea de [1,3, 128, 32]. tm
 Luego de tener el `.onnx` se puede optimizar usando TensorRT con el siguiente script
 
 ```
-python build_trt.py --weights='weights/best.onnx' --input_shape=[1,3, 128, 32] --fp16 
+python build_trt.py --weights weights/best.onnx --input_shape 1 3 128 32 --fp16 
 ```
 
 ### INT8

@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.DEBUG,
                     datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
-NPY_DIR2 = 'npy-PS44'
+NPY_DIR2 = 'datasets/npy-PS44'
 
 INPUT_1 = 'R'
 INPUT_2 = 'G'

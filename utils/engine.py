@@ -4,23 +4,13 @@ from collections import defaultdict, namedtuple
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
-import pycuda.driver as cuda
-import pycuda.autoinit
 import numpy as np
 from PIL import Image
-import ctypes
-
-import cv2
-
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 
 import glob
 import logging
 import sys
 import random
-import torchvision.transforms as transforms
 
 try:
     from processing import process_llamas as preprocessing
@@ -34,21 +24,17 @@ import onnx
 import tensorrt as trt
 import torch
 
-
 os.environ['CUDA_MODULE_LOADING'] = 'LAZY'
-logging.basicConfig(level=logging.DEBUG,
-                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S")
+#logging.basicConfig(level=logging.DEBUG,format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",datefmt="%Y-%m-%d %H:%M:%S")
+logging.getLogger('PIL').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+BATCH_SIZE = 1
 CHANNEL = 3
 HEIGHT = 128
 WIDTH = 32
 
-BATCH_SIZE = 1
-BATCH_SIZE_CALIBRATION = 1
-
-CACHE_FOLDER = "cache/"
+CACHE_FOLDER = "outputs/cache/"
 
 class EngineBuilder:
     seg = False
@@ -57,9 +43,10 @@ class EngineBuilder:
             self,
             checkpoint: Union[str, Path],
             device: Optional[Union[str, int, torch.device]] = None) -> None:
+        
         checkpoint = Path(checkpoint) if isinstance(checkpoint,str) else checkpoint
-        assert checkpoint.exists() and checkpoint.suffix in ('.onnx', '.pkl')
-        self.api = checkpoint.suffix == '.pkl'
+        assert checkpoint.exists() and checkpoint.suffix in ('.onnx')
+
         if isinstance(device, str):
             device = torch.device(device)
         elif isinstance(device, int):
@@ -79,28 +66,38 @@ class EngineBuilder:
         config = builder.create_builder_config()
         config.max_workspace_size = torch.cuda.get_device_properties(self.device).total_memory
 
+        if(input_shape[0] == -1): # solo si se hara un engine para batch size dinamico
+            # para trabajar con batch size dinamico
+            profile = builder.create_optimization_profile()
+
+            # dimensions for dynamic input "images" defined in the onnx_transform script
+            min_in_dims = trt.Dims4(1,input_shape[1],input_shape[2],input_shape[3])
+            max_in_dims = trt.Dims4(256,input_shape[1],input_shape[2],input_shape[3])
+
+            profile.set_shape("images", min_in_dims, max_in_dims, max_in_dims)
+            config.add_optimization_profile(profile) # Agrega el perfil de optimización a la configuración
+            #continua el codigo como antes
+
         flag = (1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
         network = builder.create_network(flag)
 
         self.logger = logger
         self.builder = builder
         self.network = network
-        if self.api:
-            self.build_from_api(fp16, input_shape)
-        else:
-            self.build_from_onnx()
+
+        self.build_from_onnx()
 
         if ~fp32:
             if fp16 and self.builder.platform_has_fast_fp16:
                 config.set_flag(trt.BuilderFlag.FP16)
             if int8 and self.builder.platform_has_fast_int8:
                 ## Carga de los datos
-                #transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-                calibration_file = get_calibration_files(calibration_data="imgs_experimentales/")
-                Int8_calibrator = ImagenetCalibrator(calibration_files=calibration_file, preprocess_func=preprocessing)
-
-                #builder.max_batch_size = 128                                                                                                        
-                #builder.max_workspace_size = common.GiB(100)     
+                calibration_file = get_calibration_files(calibration_data="datasets/img_preprocess/")
+                Int8_calibrator = ImagenetCalibrator(calibration_files=calibration_file,
+                                                     batch_size=input_shape[0],
+                                                     input_shape=(input_shape[1],input_shape[2],input_shape[3]),
+                                                     preprocess_func=preprocessing)
+   
                 config.set_flag(trt.BuilderFlag.INT8)
                 config.int8_calibrator = Int8_calibrator
     
@@ -146,95 +143,6 @@ class EngineBuilder:
                 trt.Logger.WARNING,
                 f'output "{out.name}" with shape: {out.shape} '
                 f'dtype: {out.dtype}')
-
-    def build_from_api(
-        self,
-        fp16: bool = True,
-        input_shape: Union[List, Tuple] = (1, 3, 128, 32),
-    ):
-        assert not self.seg
-        from .api import SPPF, C2f, Conv, Detect, get_depth, get_width
-
-        with open(self.checkpoint, 'rb') as f:
-            state_dict = pickle.load(f)
-        mapping = {0.25: 1024, 0.5: 1024, 0.75: 768, 1.0: 512, 1.25: 512}
-
-        GW = state_dict['GW']
-        GD = state_dict['GD']
-        width_64 = get_width(64, GW)
-        width_128 = get_width(128, GW)
-        width_256 = get_width(256, GW)
-        width_512 = get_width(512, GW)
-        width_1024 = get_width(mapping[GW], GW)
-        depth_3 = get_depth(3, GD)
-        depth_6 = get_depth(6, GD)
-        strides = state_dict['strides']
-        reg_max = state_dict['reg_max']
-        images = self.network.add_input(name='images',
-                                        dtype=trt.float32,
-                                        shape=trt.Dims4(input_shape))
-        assert images, 'Add input failed'
-
-        Conv_0 = Conv(self.network, state_dict, images, width_64, 3, 2, 1,
-                      'Conv.0')
-        Conv_1 = Conv(self.network, state_dict, Conv_0.get_output(0),
-                      width_128, 3, 2, 1, 'Conv.1')
-        C2f_2 = C2f(self.network, state_dict, Conv_1.get_output(0), width_128,
-                    depth_3, True, 1, 0.5, 'C2f.2')
-        Conv_3 = Conv(self.network, state_dict, C2f_2.get_output(0), width_256,
-                      3, 2, 1, 'Conv.3')
-        C2f_4 = C2f(self.network, state_dict, Conv_3.get_output(0), width_256,
-                    depth_6, True, 1, 0.5, 'C2f.4')
-        Conv_5 = Conv(self.network, state_dict, C2f_4.get_output(0), width_512,
-                      3, 2, 1, 'Conv.5')
-        C2f_6 = C2f(self.network, state_dict, Conv_5.get_output(0), width_512,
-                    depth_6, True, 1, 0.5, 'C2f.6')
-        Conv_7 = Conv(self.network, state_dict, C2f_6.get_output(0),
-                      width_1024, 3, 2, 1, 'Conv.7')
-        C2f_8 = C2f(self.network, state_dict, Conv_7.get_output(0), width_1024,
-                    depth_3, True, 1, 0.5, 'C2f.8')
-        SPPF_9 = SPPF(self.network, state_dict, C2f_8.get_output(0),
-                      width_1024, width_1024, 5, 'SPPF.9')
-        Upsample_10 = self.network.add_resize(SPPF_9.get_output(0))
-        assert Upsample_10, 'Add Upsample_10 failed'
-        Upsample_10.resize_mode = trt.ResizeMode.NEAREST
-        Upsample_10.shape = Upsample_10.get_output(
-            0).shape[:2] + C2f_6.get_output(0).shape[2:]
-        input_tensors11 = [Upsample_10.get_output(0), C2f_6.get_output(0)]
-        Cat_11 = self.network.add_concatenation(input_tensors11)
-        C2f_12 = C2f(self.network, state_dict, Cat_11.get_output(0), width_512,
-                     depth_3, False, 1, 0.5, 'C2f.12')
-        Upsample13 = self.network.add_resize(C2f_12.get_output(0))
-        assert Upsample13, 'Add Upsample13 failed'
-        Upsample13.resize_mode = trt.ResizeMode.NEAREST
-        Upsample13.shape = Upsample13.get_output(
-            0).shape[:2] + C2f_4.get_output(0).shape[2:]
-        input_tensors14 = [Upsample13.get_output(0), C2f_4.get_output(0)]
-        Cat_14 = self.network.add_concatenation(input_tensors14)
-        C2f_15 = C2f(self.network, state_dict, Cat_14.get_output(0), width_256,
-                     depth_3, False, 1, 0.5, 'C2f.15')
-        Conv_16 = Conv(self.network, state_dict, C2f_15.get_output(0),
-                       width_256, 3, 2, 1, 'Conv.16')
-        input_tensors17 = [Conv_16.get_output(0), C2f_12.get_output(0)]
-        Cat_17 = self.network.add_concatenation(input_tensors17)
-        C2f_18 = C2f(self.network, state_dict, Cat_17.get_output(0), width_512,
-                     depth_3, False, 1, 0.5, 'C2f.18')
-        Conv_19 = Conv(self.network, state_dict, C2f_18.get_output(0),
-                       width_512, 3, 2, 1, 'Conv.19')
-        input_tensors20 = [Conv_19.get_output(0), SPPF_9.get_output(0)]
-        Cat_20 = self.network.add_concatenation(input_tensors20)
-        C2f_21 = C2f(self.network, state_dict, Cat_20.get_output(0),
-                     width_1024, depth_3, False, 1, 0.5, 'C2f.21')
-        input_tensors22 = [
-            C2f_15.get_output(0),
-            C2f_18.get_output(0),
-            C2f_21.get_output(0)
-        ]
-        batched_nms = Detect(self.network, state_dict, input_tensors22,
-                             strides, 'Detect.22', reg_max, fp16)
-        for o in range(batched_nms.num_outputs):
-            self.network.mark_output(batched_nms.get_output(o))
-
 
 class TRTModule(torch.nn.Module):
     dtypeMapping = {
@@ -356,6 +264,7 @@ class TRTModule(torch.nn.Module):
                      for i in self.idx) if len(outputs) > 1 else outputs[0]
 
 
+
 class TRTProfilerV1(trt.IProfiler):
 
     def __init__(self):
@@ -376,18 +285,7 @@ class TRTProfilerV1(trt.IProfiler):
                 (name if len(name) < 40 else name[:35] + ' ' + '*' * 4, cost))
         print(f'\nTotal Inference Time: {self.total_runtime:.4f}(us)')
 
-
-class TRTProfilerV0(trt.IProfiler):
-
-    def __init__(self):
-        trt.IProfiler.__init__(self)
-
-    def report_layer_time(self, layer_name: str, ms: float):
-        f = '\t%40s\t\t\t\t%10.4fms'
-        print(f % (layer_name if len(layer_name) < 40 else layer_name[:35] +
-                   ' ' + '*' * 4, ms))
-
-def get_calibration_files(calibration_data, max_calibration_size=None, allowed_extensions=(".jpeg", ".jpg", ".png",".tiff")):
+def get_calibration_files(calibration_data, max_calibration_size=None, allowed_extensions=("JPEG",".jpeg", ".jpg", ".png",".tiff")):
     """Returns a list of all filenames ending with `allowed_extensions` found in the `calibration_data` directory.
     Parameters
     ----------
@@ -418,36 +316,39 @@ def get_calibration_files(calibration_data, max_calibration_size=None, allowed_e
 
     return calibration_files
 
-# https://docs.nvidia.com/deeplearning/sdk/tensorrt-api/python_api/infer/Int8/EntropyCalibrator2.html
 class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
-    """INT8 Calibrator Class for Imagenet-based Image Classification Models.
-    Parameters
-    ----------
-    calibration_files: List[str]
-        List of image filenames to use for INT8 Calibration
-    batch_size: int
-        Number of images to pass through in one batch during calibration
-    input_shape: Tuple[int]
-        Tuple of integers defining the shape of input to the model (Default: (3, 224, 224))
-    cache_file: str
-        Name of file to read/write calibration cache from/to.
-    preprocess_func: function -> numpy.ndarray
-        Pre-processing function to run on calibration data. This should match the pre-processing
-        done at inference time. In general, this function should return a numpy array of
-        shape `input_shape`.
     """
+        https://docs.nvidia.com/deeplearning/sdk/tensorrt-api/python_api/infer/Int8/EntropyCalibrator2.html
 
-    def __init__(self, calibration_files=[], batch_size=BATCH_SIZE, input_shape=(CHANNEL, HEIGHT, WIDTH),
+        INT8 Calibrator Class for Imagenet-based Image Classification Models.
+        Parameters
+        ----------
+        calibration_files: List[str]
+            List of image filenames to use for INT8 Calibration
+        batch_size: int
+            Number of images to pass through in one batch during calibration
+        input_shape: Tuple[int]
+            Tuple of integers defining the shape of input to the model (Default: (3, 224, 224))
+        cache_file: str
+            Name of file to read/write calibration cache from/to.
+        preprocess_func: function -> numpy.ndarray
+            Pre-processing function to run on calibration data. This should match the pre-processing
+            done at inference time. In general, this function should return a numpy array of
+            shape `input_shape`.
+    """
+    def __init__(self, calibration_files=[], batch_size=BATCH_SIZE, 
+                 input_shape=(CHANNEL, HEIGHT, WIDTH),
                  cache_file=CACHE_FOLDER+"calibration.cache", preprocess_func=None):
         super().__init__()
         self.input_shape = input_shape
         self.cache_file = cache_file
         self.batch_size = batch_size
         self.batch = np.zeros((self.batch_size, *self.input_shape), dtype=np.float32)
-        self.device_input = cuda.mem_alloc(self.batch.nbytes)
+        
+        # Inicializa un tensor en la GPU usando torch
+        self.device_input = torch.zeros(self.batch_size, *self.input_shape, dtype=torch.float32, device='cuda')
 
         self.files = calibration_files
-        # Pad the list so it is a multiple of batch_size
         if len(self.files) % self.batch_size != 0:
             logger.info("Padding # calibration files to be a multiple of batch_size {:}".format(self.batch_size))
             self.files += calibration_files[(len(calibration_files) % self.batch_size):self.batch_size]
@@ -459,7 +360,25 @@ class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
             sys.exit(1)
         else:
             self.preprocess_func = preprocess_func
+        
+        # Verificar si el archivo calibration.cache existe, si no, créalo
+        if not os.path.exists(self.cache_file):
+            # Crea el directorio si no existe
+            os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
+            
+            with open(self.cache_file, 'w') as f:
+                pass
+            logger.info(f"'{self.cache_file}' has been created!")
 
+    """ 
+    def load_batches(self):
+        for index in range(0, len(self.files), self.batch_size):
+            for offset in range(self.batch_size):
+                image = Image.open(self.files[index + offset])
+                self.batch[offset] = self.preprocess_func(image, *self.input_shape)
+            logger.info("Calibration images pre-processed: {:}/{:}".format(index+self.batch_size, len(self.files)))
+            yield self.batch 
+    """
     def load_batches(self):
         # Populates a persistent self.batch buffer with images.
         for index in range(0, len(self.files), self.batch_size):
@@ -475,18 +394,14 @@ class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
 
     def get_batch(self, names):
         try:
-            # Assume self.batches is a generator that provides batch data.
             batch = next(self.batches)
-            # Assume that self.device_input is a device buffer allocated by the constructor.
-            cuda.memcpy_htod(self.device_input, batch)
-            return [int(self.device_input)]
+            # Copia los datos desde la CPU (numpy) a la GPU (torch)
+            self.device_input.copy_(torch.tensor(batch, device='cuda'))
+            return [int(self.device_input.data_ptr())]  # Devuelve el puntero en la memoria de GPU
         except StopIteration:
-            # When we're out of batches, we return either [] or None.
-            # This signals to TensorRT that there is no calibration data remaining.
             return None
 
     def read_calibration_cache(self):
-        # If there is a cache, use it instead of calibrating again. Otherwise, implicitly return None.
         if os.path.exists(self.cache_file):
             with open(self.cache_file, "rb") as f:
                 logger.info("Using calibration cache to save time: {:}".format(self.cache_file))
