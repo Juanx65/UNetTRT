@@ -316,6 +316,9 @@ def compare_exp(opt):
     model.to(device)
     model.eval()
 
+    #from torchinfo import summary
+    #summary(model)
+
     # Eval 
     with torch.no_grad():
             output_vnll = model(Py_exp_interp)
@@ -328,7 +331,7 @@ def compare_exp(opt):
 
     # ----------------------- --closeness value-------------------------------------#
 
-    close_values = torch.isclose(output_vnll, output_trt, rtol=1e-2).sum().item()
+    close_values = torch.isclose(output_vnll, output_trt, rtol=opt.rtol).sum().item()
 
     print(output_vnll.numel())
     print("Closeness Value {:.2f} %".format( (close_values / output_vnll.numel())*100 ))
@@ -378,6 +381,7 @@ def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
 
 def parse_opt():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
     parser.add_argument('--batch_size', default = 32, type=int,help='batch size to train')
     parser.add_argument('--epochs', default = 100, type=int,help='epoch to train')
     parser.add_argument('--dropout', default = 0.089735, type=float,help='percentage dropout to use')
