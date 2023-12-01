@@ -331,10 +331,44 @@ def compare_exp(opt):
 
     # ----------------------- --closeness value-------------------------------------#
 
-    close_values = torch.isclose(output_vnll, output_trt, rtol=opt.rtol).sum().item()
-
+    #close_values = torch.isclose(output_vnll, output_trt, rtol=opt.rtol).sum().item()
+    close_values = np.isclose(t_cgan_caseC_vanilla, t_cgan_caseC, rtol=opt.rtol).sum().item()
     print(output_vnll.numel())
     print("Closeness Value {:.2f} %".format( (close_values / output_vnll.numel())*100 ))
+
+    import torch.nn.functional as F
+    # ------------------- MSE and RMSE------------------------------------------------#
+
+    # Calcular el Error Medio Cuadrático (MSE)
+    #mse = F.mse_loss(output_vnll, output_trt)
+    mse = np.mean((t_cgan_caseC_vanilla - t_cgan_caseC) ** 2)
+    # Calcular la Raíz del Error Cuadrático Medio (RMSE)
+    #rmse = torch.sqrt(mse)
+    rmse = np.sqrt(mse)
+
+    min_val = np.min(t_cgan_caseC_vanilla)
+    max_val = np.max(t_cgan_caseC_vanilla)
+
+    print(f"El rango de valores de la salida vanilla va de {min_val} a {max_val}")
+
+    print(f"MSE: {mse.item()}")
+    print(f"RMSE: {rmse.item()}")
+
+    #--------------------R2----------------------------------------------------------#
+
+    # Calculando la media de los valores reales
+    mean_y_real = np.mean(t_cgan_caseC_vanilla)
+
+    # Calculando la varianza total (SST)
+    sst = np.sum((t_cgan_caseC_vanilla - mean_y_real) ** 2)
+
+    # Calculando la varianza explicada (SSR)
+    ssr = np.sum((t_cgan_caseC - mean_y_real) ** 2)
+
+    # Calculando el coeficiente de determinación R^2
+    r2 = ssr / sst
+
+    print(f"R^2: {r2}")
 
     #--------------------------------------------------------------------------------#
 
