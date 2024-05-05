@@ -400,7 +400,7 @@ def compare_exp(opt):
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
 
-    plt.savefig('outputs/img/compare_exp.png')
+    plt.savefig('outputs/img/compare_exp.png', transparent=True)
     plt.show()
 
 def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
@@ -430,6 +430,10 @@ def parse_opt():
     return opt
 
 def main(opt):
+    
+    output_directory = 'outputs/img'
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
 
     if(opt.compare):
         compare_exp(opt)
