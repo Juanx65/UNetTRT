@@ -49,7 +49,7 @@ python eval.py --experiment
 Por ahora solo se puede probar TRT con la data experimental, para hacerlo, debes usar este codigo
 
 ```
-python eval.py --TRT --weights='weights/best.engine'
+python eval.py --trt --weights='weights/best.engine'
 ```
 
 ### Eval Compare TRT vs Vanilla
