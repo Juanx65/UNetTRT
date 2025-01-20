@@ -222,8 +222,8 @@ class MyDataLoader():
         Py = mat.get('Py')
         r_emi_A = mat.get('r')[0,:]
         z_emi_A = mat.get('z')[0,:]
-        r_emi, z_emi, t_emi = resize_temp(r_emi_A ,z_emi_A , ts_emi_A)
-        r_emi,z_emi, Py = resize_temp(r_emi_A,z_emi_A , Py)
+        r_emi, z_emi, t_emi = resize_temp(r_emi_A ,z_emi_A - 0.12, ts_emi_A)
+        r_emi,z_emi, Py = resize_temp(r_emi_A,z_emi_A -0.12, Py)
         
         mat = scipy.io.loadmat(mat_BEMI)
         Py_exp = mat.get('Py_rgb')
