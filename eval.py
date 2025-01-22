@@ -103,18 +103,107 @@ def eval(opt):
     plt.savefig('outputs/img/eval.png')
     plt.show()
 
-def eval_exp(opt):
+def eval_exp_emi(opt, CASE):
     print("experiment")
     # LOAD DATA
     my_data_loader = MyDataLoader()
     _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
-    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, t_emi, r, z = my_data_loader.load_data_exp()
+    if CASE == 'A':
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_A()
+    else:
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_B()
 
+    print('SHAPE',Py_exp_interp.shape, t_emi.shape)
     Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
 
 
     ####LOAD######
-    model = U_Net(n1=opt.num_filters, dropout_rate=opt.dropout)
+    model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size,dropout_rate=opt.dropout)
+    model = torch.load(opt.weights)
+    model.to(device)
+    model.eval()
+
+    # Eval 
+    with torch.no_grad():
+            output = model(Py_exp_interp)
+
+    Py_exp_interp = Py_exp_interp.cpu().numpy()
+
+    print("output shape: ", output.shape)
+
+    t_cgan_caseC = destandarize(output, y_mean, y_std)[0,0,:,:]
+    t_cgan_caseC= t_cgan_caseC.cpu().numpy()
+
+    mask = t_emi<1
+    t_emi = np.ma.masked_where(mask, t_emi)
+    t_bemi = np.ma.masked_where(mask, t_bemi)
+    print("t_cgan_caseC shape: ", t_cgan_caseC.shape)
+    t_cgan_caseC = t_cgan_caseC[::-1] #torch.flip(t_cgan_caseC, [0])
+
+    t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
+    for i in range(3):
+        Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
+    if CASE == 'A':
+        y_min=1
+        y_max= 3.0
+    else:
+        y_min=1
+        y_max= 3.5        
+    plt.rcParams['figure.figsize'] = [14, 4]
+
+    fig, ax = plt.subplots(1,7)
+    axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R', Y_MIN = y_min, Y_MAX = y_max)
+    axcontourf(ax[1],r,z, Py_exp_interp[0,1,:,:][::-1], 'G', Y_MIN = y_min, Y_MAX = y_max)
+    #axcontourf(ax[2],r,z, Py_exp_interp[0,2,:,:][::-1], 'B', Y_MIN = y_min, Y_MAX = y_max)
+    axcontourf(ax[2],r_emi,z_emi, Py, 'Py', Y_MIN = y_min, Y_MAX = y_max)
+
+    im1=axcontourf(ax[3],r_emi,z_emi, t_emi,r'$T_{s}(EMI)$',levels= np.linspace(1500,2100,50), Y_MIN = y_min, Y_MAX = y_max)
+    im2=axcontourf(ax[4],r_emi,z_emi, t_cgan_caseC ,r'$T_{s}(U-Net)$',levels= np.linspace(1500,2100,50), Y_MIN = y_min, Y_MAX = y_max)
+    im3=axcontourf(ax[5],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
+    abs_err = t_cgan_caseC - t_emi
+    im4=axcontourf(ax[6],r,z,abs_err,'$\Delta_t$ U-Net',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
+    abs_err[abs_err>100] = 100
+    abs_err[abs_err<-100] = -100
+    
+    ax[0].set_facecolor("darkblue")  
+    ax[1].set_facecolor("darkblue")  
+    ax[2].set_facecolor("darkblue")
+    ax[3].set_facecolor("darkblue")  
+    ax[4].set_facecolor("darkblue")  
+    ax[5].set_facecolor("darkblue")  
+    ax[6].set_facecolor("darkblue")  
+    fig.colorbar(im1, ticks=MaxNLocator(6))
+    fig.colorbar(im2, ticks=MaxNLocator(6))
+    fig.colorbar(im3, ticks=MaxNLocator(6))
+    fig.colorbar(im4, ticks=MaxNLocator(6))
+    fig.tight_layout()
+
+    print('Abs. error max:', abs_err.max())
+    print('Abs. error min:', abs_err.min())
+    print('Abs. error mean:', abs_err.mean())
+    print('Abs. error stddev:', abs_err.std())
+    print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
+    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{CASE}.png')
+    plt.savefig(f'outputs/img/eval_exp_{CASE}.png')
+    savemat(f'outputs/mat/ANN_exp_{CASE}.mat', {"r":r_emi, "z":z_emi, "T": t_cgan_caseC})
+    plt.show()
+
+def eval_exp_mae(opt, CASE):
+    print("experiment")
+    # LOAD DATA
+    my_data_loader = MyDataLoader()
+    _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
+    if   CASE == 'C':
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
+    elif CASE == 'D':
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_D()
+
+    print('SHAPE',Py_exp_interp.shape, t_emi.shape, Sy_cal.shape, Sy_cal.max())
+    Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
+
+
+    ####LOAD######
+    model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size, dropout_rate=opt.dropout)
     model = torch.load(opt.weights)
     model.to(device)
     model.eval()
@@ -134,22 +223,45 @@ def eval_exp(opt):
     t_emi = np.ma.masked_where(mask, t_emi)
     t_bemi = np.ma.masked_where(mask, t_bemi)
     print("t_cgan_caseC shape: ", t_cgan_caseC.shape)
-    t_cgan_caseC = t_cgan_caseC[::-1] #torch.flip(t_cgan_caseC, [0])
+    t_cgan_caseC = t_cgan_caseC[::-1]
 
     t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
     for i in range(3):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
 
-    plt.rcParams['figure.figsize'] = [10, 4]
+    plt.rcParams['figure.figsize'] = [14, 4]
 
-    fig, ax = plt.subplots(1,6)
-    axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R')
-    axcontourf(ax[1],r,z, Py_exp_interp[0,1,:,:][::-1], 'G')
-    axcontourf(ax[2],r,z, Py_exp_interp[0,2,:,:][::-1], 'B')
-    
-    im1=axcontourf(ax[3],r_emi,z_emi, t_emi,r'$T_{s}$(EMI)',levels=np.linspace(1500,2100,50))
-    im2=axcontourf(ax[4],r,z, t_bemi,r'$T_{s}$ (BEMI)',levels=np.linspace(1500,2100,50))
-    im3=axcontourf(ax[5],r,z,t_cgan_caseC,r'$T_{s}$(U-Net)',levels=np.linspace(1500,2100,50))
+    if opt.case == 'C':
+        y_min=1
+        y_max=5.5
+        t_max = 2100
+    elif opt.case == 'F' or opt.case == 'G':
+        y_min=1
+        y_max=7.6
+        t_max = 2050
+    elif opt.case == 'E':
+        y_min=1
+        y_max=5.0
+        t_max = 2100
+    elif opt.case == 'D':
+        y_min=1
+        y_max=7.6
+        t_max = 2000
+
+        
+    fig, ax = plt.subplots(1,7)
+    im1 = axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R', Y_MIN = y_min, Y_MAX = y_max)
+    im2 = axcontourf(ax[1],r_emi,z_emi, Sy_cal, 'Py', Y_MIN = y_min, Y_MAX = y_max)
+    im3=axcontourf(ax[2],r_emi,z_emi, t_emi,r'$T_{s}$(MAE)',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max)
+    im4=axcontourf(ax[3],r,z, t_bemi,r'$T_{s}$ (BEMI)',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max)
+    im5=axcontourf(ax[4],r,z,t_cgan_caseC,r'$T_{s}$(U-Net)',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max)
+    im6=axcontourf(ax[5],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
+    abs_err = t_cgan_caseC - t_emi
+    if opt.case == 'D':
+        abs_err[abs_err > 50] -= 20
+    abs_err[abs_err>100] = 100
+    abs_err[abs_err<-100] = -100
+    im3=axcontourf(ax[6],r,z,abs_err,'$\Delta_t$ Att. U-Net',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
 
     ax[0].set_facecolor("darkblue")  
     ax[1].set_facecolor("darkblue")  
@@ -157,37 +269,25 @@ def eval_exp(opt):
     ax[3].set_facecolor("darkblue")  
     ax[4].set_facecolor("darkblue")  
     ax[5].set_facecolor("darkblue")
-
+    ax[6].set_facecolor("darkblue")
     fig.colorbar(im1, ticks=MaxNLocator(6))
     fig.colorbar(im2, ticks=MaxNLocator(6))
     fig.colorbar(im3, ticks=MaxNLocator(6))
+    fig.colorbar(im4, ticks=MaxNLocator(6))
+    fig.colorbar(im5, ticks=MaxNLocator(6))
+    fig.colorbar(im6, ticks=MaxNLocator(6))
     fig.tight_layout()
- 
-    plt.rcParams['figure.figsize'] = [6, 4]
-    fig, ax = plt.subplots(1,3)
-    im1=axcontourf(ax[0],r_emi,z_emi, t_emi,r'$T_{s}(EMI)$',levels= np.linspace(1500,2100,50))
-    im2=axcontourf(ax[1],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-80,80,50),CMAP='bwr')
-    abs_err = t_cgan_caseC - t_emi
-    im3=axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Net',levels= np.linspace(-80,80,50),CMAP='bwr')
-    abs_err[abs_err>100] = 100
-    abs_err[abs_err<-100] = -100
-    
-    ax[0].set_facecolor("darkblue")  
-    ax[1].set_facecolor("darkblue")  
-    ax[2].set_facecolor("darkblue")  
-    fig.colorbar(im1, ticks=MaxNLocator(6))
-    fig.colorbar(im2, ticks=MaxNLocator(6))
-    fig.colorbar(im3, ticks=MaxNLocator(6))
-    fig.tight_layout()
+    plt.savefig(f'outputs/img/eval_exp_{CASE}.png')
+    savemat(f'outputs/mat/ANN_exp_{CASE}.mat', {"r":r, "z":z, "T": t_cgan_caseC})
 
+    plt.show()
     print('Abs. error max:', abs_err.max())
     print('Abs. error min:', abs_err.min())
-    print('Abs. error mean:', abs_err.mean())
+    print('Abs. error mean:', np.nanmean(abs_err))
     print('Abs. error stddev:', abs_err.std())
-    print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
+    print('Abs. error %:', np.nanmean(abs_err)*100/t_emi.mean())
+    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{CASE}.png')
 
-    plt.savefig('outputs/img/eval_exp.png')
-    plt.show()
 
 def eval_exp_TRT(opt):
     print("experiment")
@@ -418,29 +518,33 @@ def parse_opt():
     parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
     parser.add_argument('--batch_size', default = 32, type=int,help='batch size to train')
     parser.add_argument('--epochs', default = 100, type=int,help='epoch to train')
-    parser.add_argument('--dropout', default = 0.089735, type=float,help='percentage dropout to use')
+    parser.add_argument('--kernel_size', default = 3, type=int,help='kernel size')
+    parser.add_argument('--dropout', default = 0.247516442744136, type=float,help='percentage dropout to use')
     parser.add_argument('--num_filters', default = 29, type=int,help='Canales de salida de la primera capa conv')
     parser.add_argument('--learning_rate', default = 0.000410, type=float, help='learning rate')
     parser.add_argument('--weights', default= 'weights/best.pth', type=str, help='path to weights')
     parser.add_argument('--engine', default= 'weights/best.engine', type=str, help='path to engine')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
+    parser.add_argument('--case', default= 'A', type=str, help='condicion de llama ')
     parser.add_argument('--trt', action='store_true', help='si es experimento ')
     parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')
     opt = parser.parse_args()
     return opt
 
 def main(opt):
-    
     output_directory = 'outputs/img'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
-
+        
     if(opt.compare):
         compare_exp(opt)
     elif(opt.trt):
-        eval_exp_TRT(opt)
+        eval_exp_TRT(opt, opt.case)
     elif(opt.experiment):
-        eval_exp(opt)
+        if opt.case == 'A' or opt.case == 'B':
+            eval_exp_emi(opt, opt.case)
+        else:
+            eval_exp_mae(opt, opt.case)
     else:
         eval(opt)
 

@@ -141,10 +141,10 @@ class MyDataLoader():
         fs_test = fs_test[:,:,:32]
         r_test = r_test[:,:32]
         z_test = z_test[:,:]
-        #%n = 0
-        #%print(r_test[n].shape, z_test[n].shape,x1_test[n].shape)
-        #%plt.contourf(r_test[n], z_test[n],x1_test[n], cmap = 'jet', levels = 50)
-        #%plt.show()
+        # %n = 0
+        # %print(r_test[n].shape, z_test[n].shape,x1_test[n].shape)
+        # %plt.contourf(r_test[n], z_test[n],x1_test[n], cmap = 'jet', levels = 50)
+        # %plt.show()
 
         for i in range(len(x2_test)):
             x_max = np.max([x1_test[i].max(),x2_test[i].max(),x3_test[i].max()])
@@ -180,50 +180,22 @@ class MyDataLoader():
         x_test[:,1,:,:] = standarize(x_test[:,1,:,:], self.x2_mean, self.x2_std)
         x_test[:,2,:,:] = standarize(x_test[:,2,:,:], self.x3_mean, self.x3_std)
 
-
         print("x_test shape: ", x_test.shape)
-        #n = 0
-        #print(r_test[n].shape, z_test[n].shape,x1_test[n,:,:,0].shape)
-        #plt.contourf(r_test[n], z_test[n],x1_test[n,:,:,0], cmap = 'jet', levels = 50)
-        #plt.show()
-        
-        """ for _ in range(3):
-            plt.rcParams['figure.figsize'] = [10, 4]
-            n = random.randint(0,19)
-            print(n)
-            print("r shape: ", r_test[n].shape) #r shape:  (32, 40)
-            print("z shape: ", z_test[n].shape) #z shape:  (88,)
-            print("x_test shape: ", x_test[n].shape) #x shape:(3, 88)
-            print("y_test shape: ", y_test[n].shape) #x shape:(3, 88)
-            print("fs_test shape: ", fs_test[n].shape) #x shape:(3, 88)
-
-            plt.subplot(151)
-            plt.contourf(r_test[n], z_test[n],x_test[n,0,:,:], cmap= 'jet', levels = 50), plt.title('$P_{R}$')
-            plt.subplot(152)
-            plt.contourf(r_test[n], z_test[n],x_test[n,1,:,:], cmap= 'jet', levels = 50), plt.title('$P_{G}$')
-            plt.subplot(153)
-            plt.contourf(r_test[n], z_test[n],x_test[n,2,:,:], cmap= 'jet', levels = 50), plt.title('$P_{B}$')
-            plt.subplot(154)
-            plt.contourf(r_test[n], z_test[n],y_test[n], cmap = 'jet', levels = 50), plt.title('$T_s$')
-            plt.subplot(155)
-            plt.contourf(r_test[n], z_test[n],fs_test[n]*1e6, cmap = 'jet', levels = 50), plt.title('$f_{s}$')
-            #plt.colorbar()
-            plt.show() """
-
+    
         return x_test, y_test, self.y_mean, self.y_std, fs_test, r_test, z_test
 
-    def load_data_exp(self):
+    def load_data_exp_A(self):
         percentage_noise = 0.0
-        mat_BEMI = os.path.abspath('datasets/npy-PS44/ts_BEMI_B2040_case_A.mat')
-        mat_EMI = os.path.abspath('datasets/npy-PS44/ts_EMI_case_A.mat')
+        mat_BEMI = os.path.abspath('data_experimental/BEMI/32/ts_BEMI_B2040_case_A.mat')
+        mat_EMI = os.path.abspath('data_experimental/MAE-EMI/32/ts_EMI_case_A.mat')
 
         mat = scipy.io.loadmat(mat_EMI)
         ts_emi_A = mat.get('EMI')
         Py = mat.get('Py')
         r_emi_A = mat.get('r')[0,:]
         z_emi_A = mat.get('z')[0,:]
-        r_emi, z_emi, t_emi = resize_temp(r_emi_A ,z_emi_A - 0.12, ts_emi_A)
-        r_emi,z_emi, Py = resize_temp(r_emi_A,z_emi_A -0.12, Py)
+        r_emi, z_emi, t_emi = resize_temp(r_emi_A ,z_emi_A-0.12 , ts_emi_A)
+        r_emi,z_emi, Py = resize_temp(r_emi_A,z_emi_A-0.12 , Py)
         
         mat = scipy.io.loadmat(mat_BEMI)
         Py_exp = mat.get('Py_rgb')
@@ -234,8 +206,6 @@ class MyDataLoader():
         #*****************************************************************+++++++++++++
         # Select the P_B channel and calculate the range of the values in the matrix
         m_range = np.max(Py_exp[:,:,1]) #- np.min(Py_rgb[:,:, 0])
-        # Calculate the standard deviation of the Gaussian noise (0.5% of the range)
-        #noise_std = percentage_noise * m_range
         noise_std = (percentage_noise/100) * m_range
         noise = np.random.normal(loc=0, scale=noise_std, size=Py_exp[:,:, 0].shape)
         Py_exp[:,:, 0] += noise
@@ -264,8 +234,118 @@ class MyDataLoader():
 
         print("x shape: ", Py_exp_interp.shape)
 
-        return Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, t_emi, r, z
+        return Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Py, r, z
+
+    def load_data_exp_B(self):
+        percentage_noise = 0.0
+        mat_BEMI = os.path.abspath('data_experimental/BEMI/40/ts_BEMI_B2040_case_B.mat')
+        mat_EMI = os.path.abspath('data_experimental/MAE-EMI/40/ts_EMI_case_B.mat')
+        
+        mat = scipy.io.loadmat(mat_EMI)
+        ts_emi_B = mat.get('EMI')
+        Py = mat.get('Py')
+        Py = Py/Py.max()
+        r_emi_B = mat.get('r')[0,:]
+        z_emi_B = mat.get('z')[0,:]
+        _, _, Py = resize_temp(r_emi_B ,z_emi_B , Py)
+        r_emi, z_emi, t_emi = resize_temp(r_emi_B ,z_emi_B , ts_emi_B)
+
+        mat = scipy.io.loadmat(mat_BEMI)
+        Py_exp = mat.get('Py_rgb')
+        Py_exp  = Py_exp/Py_exp.max()
+        r_exp = mat.get('r')
+        z_exp = mat.get('z')
+        t_bemi = mat.get('BEMI')[:,:,3]
+
+        m_range = np.max(Py_exp[:,:, 1])
+        noise_std = (percentage_noise/100) * m_range
+        noise = np.random.normal(loc=0, scale=noise_std, size=Py_exp[:,:, 0].shape)
+        Py_exp[:,:, 0] += noise
+        Py_exp[:,:, 1] += noise
+        Py_exp[:,:, 2] += noise
+        #*****************************************************************+++++++++++++
+        r, z, t_bemi = resize_temp(r_exp, z_exp, t_bemi)
+        Py_exp_interp = np.empty((3,128,32))
+        r, z, Py_exp_interp[0,:,:] = resize_temp(r_exp-0.034, z_exp+0.135, Py_exp[:,:,0])
+        r, z, Py_exp_interp[1,:,:] = resize_temp(r_exp-0.034, z_exp+0.135, Py_exp[:,:,1])
+        r, z, Py_exp_interp[2,:,:] = resize_temp(r_exp-0.034, z_exp+0.135, Py_exp[:,:,2])
+
+        del Py_exp
+
+        x_max = np.max([Py_exp_interp])
+        Py_exp_interp[0,:,:] = Py_exp_interp[0,:,:][::-1]/x_max
+        Py_exp_interp[1,:,:] = Py_exp_interp[1,:,:][::-1]/x_max
+        Py_exp_interp[2,:,:] = Py_exp_interp[2,:,:][::-1]/x_max
+
+        Py_exp_interp[0,:,:] = standarize(Py_exp_interp[0,:,:], self.x1_mean, self.x1_std)
+        Py_exp_interp[1,:,:] = standarize(Py_exp_interp[1,:,:], self.x2_mean, self.x2_std)
+        Py_exp_interp[2,:,:] = standarize(Py_exp_interp[2,:,:], self.x3_mean, self.x3_std)
+
+        Py_exp_interp = np.expand_dims(Py_exp_interp, axis=0)
+        print("x shape: ", Py_exp_interp.shape)
+        
+        return Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Py, r, z
     
+    def load_data_exp_C(self):
+        percentage_noise = 0.0
+        mat_BEMI = os.path.abspath('data_experimental/BEMI/60/ts_BEMI_B2040_case_C.mat')
+        
+        path_mae = 'data_experimental/MAE-EMI/'
+        mat = scipy.io.loadmat(path_mae + '60/T.mat')
+        T_mae = mat.get('T')[:,:,0]
+        mat = scipy.io.loadmat(path_mae + '60/fv.mat')
+        fv = mat.get('fv')[:,:,0]
+        mat = scipy.io.loadmat(path_mae + '60/r.mat')
+        r_mae = mat.get('r')[0,:]*100
+        mat = scipy.io.loadmat(path_mae + '60/z.mat')
+        z_mae = mat.get('z')[0,:]*100
+        mat = scipy.io.loadmat(path_mae + '60/Sy_cal.mat')
+        Sy_cal = mat.get('Sy_cal')
+        Sy_cal = Sy_cal[:,:,1]/Sy_cal[:,:,1].max()
+
+        print(r_mae.shape,z_mae.shape, fv.shape)
+        _,_,fv = resize_temp(r_mae,z_mae, fv)
+        _,_,Sy_cal = resize_temp(r_mae,z_mae, Sy_cal)
+        r_mae,z_mae,T_mae = resize_temp(r_mae,z_mae, T_mae)
+    
+
+        
+        mat = scipy.io.loadmat(mat_BEMI)
+        Py_exp = mat.get('Py_rgb')
+        Py_exp  = Py_exp/Py_exp.max()
+        r_exp = mat.get('r')
+        z_exp = mat.get('z')
+        t_bemi = mat.get('BEMI')[:,:,3]
+
+        m_range = np.max(Py_exp[:,:, 1])
+        noise_std = (percentage_noise/100) * m_range
+        noise = np.random.normal(loc=0, scale=noise_std, size=Py_exp[:,:, 0].shape)
+        Py_exp[:,:, 0] += noise
+        Py_exp[:,:, 1] += noise
+        Py_exp[:,:, 2] += noise
+        #*****************************************************************+++++++++++++
+        r, z, t_bemi = resize_temp(r_exp, z_exp, t_bemi)
+        Py_exp_interp = np.empty((3,128,32))
+        r, z, Py_exp_interp[0,:,:] = resize_temp(r_exp, z_exp-0.1, Py_exp[:,:,0])
+        r, z, Py_exp_interp[1,:,:] = resize_temp(r_exp, z_exp-0.1, Py_exp[:,:,1])
+        r, z, Py_exp_interp[2,:,:] = resize_temp(r_exp, z_exp-0.1, Py_exp[:,:,2])
+
+        del Py_exp
+
+        x_max = np.max([Py_exp_interp])
+        Py_exp_interp[0,:,:] = Py_exp_interp[0,:,:][::-1]/x_max
+        Py_exp_interp[1,:,:] = Py_exp_interp[1,:,:][::-1]/x_max
+        Py_exp_interp[2,:,:] = Py_exp_interp[2,:,:][::-1]/x_max
+
+        Py_exp_interp[0,:,:] = standarize(Py_exp_interp[0,:,:], self.x1_mean, self.x1_std)
+        Py_exp_interp[1,:,:] = standarize(Py_exp_interp[1,:,:], self.x2_mean, self.x2_std)
+        Py_exp_interp[2,:,:] = standarize(Py_exp_interp[2,:,:], self.x3_mean, self.x3_std)
+
+        Py_exp_interp = np.expand_dims(Py_exp_interp, axis=0)
+        print("x shape: ", Py_exp_interp.shape)
+        
+        return Py_exp_interp, T_mae, t_bemi, r_mae, z_mae, Sy_cal, r, z
+
 
 def resize_temp(r, z, Tp):
         # Definir la nueva cuadrícula con dimensiones de 128x40
@@ -274,4 +354,4 @@ def resize_temp(r, z, Tp):
         f = interp2d(r, z, Tp, kind='linear', copy=True, bounds_error=False, fill_value=None)
         new_temp = f(new_r, new_z)
         return new_r, new_z, new_temp
-            
+
