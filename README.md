@@ -45,7 +45,7 @@ python eval.py --experiment --case X
 ```
 Donde X corresponde a una condición de llama. Por ejemplo, para la llama Yale-60:
 ```
-python eval.py --batch_size 128 --kernel_size 4 --dropout 0.119372 --num_filters 20 --learning_rate 0.001112 --weights 'weights/best_5.pth' --experiment --case D
+python eval.py --batch_size 128 --kernel_size 4 --dropout 0.119372 --num_filters 20 --learning_rate 0.001112 --weights 'weights/best_5.pth' --experiment --case C
 ```
 
 ### Eval TRT experimental
