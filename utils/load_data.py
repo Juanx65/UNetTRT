@@ -268,7 +268,7 @@ class MyDataLoader():
         print("x_test shape: ", x_test.shape)
         y_test = standarize(self.y_test, self.y_mean, self.y_std)
         
-        return x_test, y_test, self.y_mean, self.y_std, fs_test, r_test, z_test
+        return x_test, y_test, self.y_mean, self.y_std, self.fs_test, self.r_test, self.z_test
     
     def load_data_exp_A(self):
         percentage_noise = 0.0
