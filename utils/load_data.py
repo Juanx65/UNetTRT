@@ -260,11 +260,13 @@ class MyDataLoader():
         print(x1_test.shape)
         x_test = format_to_train(x1_test,x2_test,x3_test)
 
+
         x_test[:,0,:,:] = standarize(x_test[:,0,:,:], self.x1_mean, self.x1_std)
         x_test[:,1,:,:] = standarize(x_test[:,1,:,:], self.x2_mean, self.x2_std)
         x_test[:,2,:,:] = standarize(x_test[:,2,:,:], self.x3_mean, self.x3_std)
 
         print("x_test shape: ", x_test.shape)
+        y_test = standarize(self.y_test, self.y_mean, self.y_std)
         
         return x_test, y_test, self.y_mean, self.y_std, fs_test, r_test, z_test
     
