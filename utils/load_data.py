@@ -15,8 +15,12 @@ INPUT_2 = 'G'
 INPUT_3 = 'B'
 
 OUTPUT = 'ts'
+INPUT_4 = 'r'
 
-NPY_DIR2 = 'datasets/npy-PS44'
+NPY_DIR1 = 'dataset-combustion/npy-PS44'
+NPY_DIR2 = 'dataset-combustion/npy-PSB40-4'
+NPY_DIR3 = 'dataset-combustion/npy-PSB60'
+NPY_DIR4 = 'dataset-combustion/npy-PSB80'
 
 PERCENT_NOISE = 0.0025
 ADD_NOISE = True
@@ -24,13 +28,66 @@ ADD_NOISE = True
 class MyDataLoader():
     def __init__(self):
         super(MyDataLoader, self).__init__()
-        self.x1 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_1 + '.npy')))[20:,:,:]
-        self.x2 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_2 + '.npy')))[20:,:,:]
-        self.x3 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[20:,:,:]
-        self.y = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[20:,:,:]
-        self.fs = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[20:,:,:]
-        self.r = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r_m.npy')))[20:,:]
-        self.z = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:,:]
+        self.x1_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_1 + '.npy')))[20:n_samples,:,:]
+        self.x2_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_2 + '.npy')))[20:n_samples,:,:]
+        self.x3_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_3 + '.npy')))[20:n_samples,:,:]
+        self.y_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, OUTPUT + '.npy')))[20:n_samples,:,:]
+        self.fs_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, 'fs.npy')))[20:n_samples,:,:]
+        #self.r_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4  +'.npy')))[20:n_samples,0,:]
+        self.r_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4  +'.npy')))[20:n_samples,:]
+        
+        self.z_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, 'z.npy')))[20:n_samples,:]
+
+        self.x1_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_1 + '.npy')))[20:5010,:,:]
+        self.x2_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_2 + '.npy')))[20:5010,:,:]
+        self.x3_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[20:5010,:,:]
+        self.y_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[20:5010,:,:]
+        self.fs_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[20:5010,:,:]
+        self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,:]
+        #self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,0,:]
+        self.z_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:5010,:]
+
+        self.x1_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_1 + '.npy')))[20:n_samples,:,:]
+        self.x2_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_2 + '.npy')))[20:n_samples,:,:]
+        self.x3_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_3 + '.npy')))[20:n_samples,:,:]
+        self.y_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, OUTPUT + '.npy')))[20:n_samples,:,:]
+        self.fs_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, 'fs.npy')))[20:n_samples,:,:]
+        #self.r_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4  +'.npy')))[20:n_samples,0,:]
+        self.r_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4  +'.npy')))[20:n_samples,:]
+        self.z_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, 'z.npy')))[20:n_samples,:]
+
+        self.x1_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_1 + '.npy')))[20:n_samples,:128,:]
+        self.x2_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_2 + '.npy')))[20:n_samples,:128,:]
+        self.x3_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_3 + '.npy')))[20:n_samples,:128,:]
+        self.y_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, OUTPUT + '.npy')))[20:n_samples,:128,:]
+        self.fs_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, 'fs.npy')))[20:n_samples,:128,:]
+        self.r_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_4  +'.npy')))[20:n_samples,:]
+        self.z_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, 'z.npy')))[20:n_samples,:128]
+
+        self.x1_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_1 + '.npy')))[20:4000,:128,:]
+        self.x2_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_2 + '.npy')))[20:4000,:128,:]
+        self.x3_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_3 + '.npy')))[20:4000,:128,:]
+        self.y_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, OUTPUT + '.npy')))[20:4000,:128,:]
+        self.fs_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, 'fs.npy')))[20:4000,:128,:]
+        self.r_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_4  +'.npy')))[20:4000,:]
+        self.z_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, 'z.npy')))[20:4000,:128]
+        print(self.r_A.shape, self.r_B.shape, self.r_C.shape, self.r_D.shape)
+         
+        self.x1 = np.concatenate([self.x1_A,self.x1_B,self.x1_C,self.x1_D, self.x1_D1], axis = 0)
+        self.x2 = np.concatenate([self.x2_A,self.x2_B,self.x2_C,self.x2_D, self.x2_D1], axis = 0)
+        self.x3 = np.concatenate([self.x3_A,self.x3_B,self.x3_C,self.x3_D, self.x3_D1], axis = 0)
+        self.y = np.concatenate([self.y_A,self.y_B,self.y_C,self.y_D, self.y_D1], axis = 0)
+        self.fs = np.concatenate([self.fs_A,self.fs_B,self.fs_C,self.fs_D, self.fs_D1], axis = 0)
+        self.r = np.concatenate([self.r_A,self.r_B,self.r_C,self.r_D, self.r_D1], axis = 0)
+        self.z = np.concatenate([self.z_A,self.z_B,self.z_C,self.z_D, self.z_D1], axis = 0)
+
+        del self.x1_A, self.x1_B, self.x1_C, self.x1_D, self.x1_D1
+        del self.x2_A, self.x2_B, self.x2_C, self.x2_D, self.x2_D1
+        del self.x3_A, self.x3_B, self.x3_C, self.x3_D, self.x3_D1
+        del self.y_A, self.y_B, self.y_C, self.y_D, self.y_D1
+        del self.fs_A, self.fs_B, self.fs_C, self.fs_D, self.fs_D1
+        del self.r_A, self.r_B, self.r_C, self.r_D, self.r_D1
+        del self.z_A, self.z_B, self.z_C, self.z_D, self.z_D1
 
         self.x1 = self.x1[:,:,:32]
         self.x2 = self.x2[:,:,:32]
@@ -125,14 +182,49 @@ class MyDataLoader():
         return x_train,x_valid, y_train, y_valid, self.y_mean, self.y_std
 
     def load_test_data(self):
+        x1_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_1 + '.npy')))[:20,:,:]
+        x2_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_2 + '.npy')))[:20,:,:]
+        x3_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_3 + '.npy')))[:20,:,:]
+        y_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, OUTPUT + '.npy')))[:20,:,:]
+        fs_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, 'fs.npy')))[:20,:,:]
+        #r_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4 + '.npy')))[:20,0,:]
+        r_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4 + '.npy')))[:20,:]
+        z_A_test = np.load(os.path.abspath(os.path.join(NPY_DIR1, 'z.npy')))[:20,:]
 
-        x1_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_1 + '.npy')))[:20,:,:]
-        x2_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_2 + '.npy')))[:20,:,:]
-        x3_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[:20,:,:]
-        y_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[:20,:,:]
-        fs_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[:20,:,:]
-        r_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r_m.npy')))[:20,:]
-        z_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[:20,:]
+        x1_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_1 + '.npy')))[:20,:,:]
+        x2_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_2 + '.npy')))[:20,:,:]
+        x3_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[:20,:,:]
+        y_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[:20,:,:]
+        fs_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[:20,:,:]
+        #r_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'r_m.npy')))[:20,0,:]
+        r_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4 + '.npy')))[:20,:]
+        z_B_test = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[:20,:]
+
+        x1_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_1 + '.npy')))[:20,:,:]
+        x2_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_2 + '.npy')))[:20,:,:]
+        x3_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_3 + '.npy')))[:20,:,:]
+        y_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, OUTPUT + '.npy')))[:20,:,:]
+        fs_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, 'fs.npy')))[:20,:,:]
+        r_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4 +'.npy')))[:20,:]
+        r_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4 +'.npy')))[:20,:]
+        z_C_test = np.load(os.path.abspath(os.path.join(NPY_DIR3, 'z.npy')))[:20,:]
+
+        x1_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_1 + '.npy')))[:20,:128,:]
+        x2_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_2 + '.npy')))[:20,:128,:]
+        x3_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_3 + '.npy')))[:20,:128,:]
+        y_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, OUTPUT + '.npy')))[:20,:128,:]
+        fs_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, 'fs.npy')))[:20,:128,:]
+        #r_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, 'r_m.npy')))[:20,:]
+        r_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_4 + '.npy')))[:20,:]
+        z_D_test = np.load(os.path.abspath(os.path.join(NPY_DIR4, 'z.npy')))[:20,:128]
+
+        x1_test = np.concatenate([x1_A_test,x1_B_test,x1_C_test,x1_D_test], axis = 0)
+        x2_test = np.concatenate([x2_A_test,x2_B_test,x2_C_test,x2_D_test], axis = 0)
+        x3_test = np.concatenate([x3_A_test,x3_B_test,x3_C_test,x3_D_test], axis = 0)
+        y_test = np.concatenate([y_A_test,y_B_test,y_C_test,y_D_test], axis = 0)
+        fs_test = np.concatenate([fs_A_test,fs_B_test,fs_C_test,fs_D_test], axis = 0)
+        r_test = np.concatenate([r_A_test,r_B_test,r_C_test,r_D_test], axis = 0)
+        z_test = np.concatenate([z_A_test,z_B_test,z_C_test,z_D_test], axis = 0)
 
         x1_test = x1_test[:,:,:32]
         x2_test = x2_test[:,:,:32]
@@ -141,10 +233,6 @@ class MyDataLoader():
         fs_test = fs_test[:,:,:32]
         r_test = r_test[:,:32]
         z_test = z_test[:,:]
-        # %n = 0
-        # %print(r_test[n].shape, z_test[n].shape,x1_test[n].shape)
-        # %plt.contourf(r_test[n], z_test[n],x1_test[n], cmap = 'jet', levels = 50)
-        # %plt.show()
 
         for i in range(len(x2_test)):
             x_max = np.max([x1_test[i].max(),x2_test[i].max(),x3_test[i].max()])
@@ -181,9 +269,9 @@ class MyDataLoader():
         x_test[:,2,:,:] = standarize(x_test[:,2,:,:], self.x3_mean, self.x3_std)
 
         print("x_test shape: ", x_test.shape)
-    
+        
         return x_test, y_test, self.y_mean, self.y_std, fs_test, r_test, z_test
-
+    
     def load_data_exp_A(self):
         percentage_noise = 0.0
         mat_BEMI = os.path.abspath('data_experimental/BEMI/32/ts_BEMI_B2040_case_A.mat')
