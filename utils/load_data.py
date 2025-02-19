@@ -15,7 +15,7 @@ INPUT_2 = 'G'
 INPUT_3 = 'B'
 
 OUTPUT = 'ts'
-INPUT_4 = 'r'
+INPUT_4 = 'r_axis'
 
 NPY_DIR1 = 'dataset-combustion/npy-PS44'
 NPY_DIR2 = 'dataset-combustion/npy-PSB40-4'
@@ -64,31 +64,22 @@ class MyDataLoader():
         self.fs_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, 'fs.npy')))[20:n_samples,:128,:]
         self.r_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_4  +'.npy')))[20:n_samples,:]
         self.z_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, 'z.npy')))[20:n_samples,:128]
+    
+        self.x1 = np.concatenate([self.x1_A,self.x1_B,self.x1_C,self.x1_D], axis = 0)
+        self.x2 = np.concatenate([self.x2_A,self.x2_B,self.x2_C,self.x2_D], axis = 0)
+        self.x3 = np.concatenate([self.x3_A,self.x3_B,self.x3_C,self.x3_D], axis = 0)
+        self.y = np.concatenate([self.y_A,self.y_B,self.y_C,self.y_D], axis = 0)
+        self.fs = np.concatenate([self.fs_A,self.fs_B,self.fs_C,self.fs_D], axis = 0)
+        self.r = np.concatenate([self.r_A,self.r_B,self.r_C,self.r_D], axis = 0)
+        self.z = np.concatenate([self.z_A,self.z_B,self.z_C,self.z_D], axis = 0)
 
-        self.x1_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_1 + '.npy')))[20:4000,:128,:]
-        self.x2_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_2 + '.npy')))[20:4000,:128,:]
-        self.x3_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_3 + '.npy')))[20:4000,:128,:]
-        self.y_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, OUTPUT + '.npy')))[20:4000,:128,:]
-        self.fs_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, 'fs.npy')))[20:4000,:128,:]
-        self.r_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, INPUT_4  +'.npy')))[20:4000,:]
-        self.z_D1 = np.load(os.path.abspath(os.path.join(NPY_DIR5, 'z.npy')))[20:4000,:128]
-        print(self.r_A.shape, self.r_B.shape, self.r_C.shape, self.r_D.shape)
-         
-        self.x1 = np.concatenate([self.x1_A,self.x1_B,self.x1_C,self.x1_D, self.x1_D1], axis = 0)
-        self.x2 = np.concatenate([self.x2_A,self.x2_B,self.x2_C,self.x2_D, self.x2_D1], axis = 0)
-        self.x3 = np.concatenate([self.x3_A,self.x3_B,self.x3_C,self.x3_D, self.x3_D1], axis = 0)
-        self.y = np.concatenate([self.y_A,self.y_B,self.y_C,self.y_D, self.y_D1], axis = 0)
-        self.fs = np.concatenate([self.fs_A,self.fs_B,self.fs_C,self.fs_D, self.fs_D1], axis = 0)
-        self.r = np.concatenate([self.r_A,self.r_B,self.r_C,self.r_D, self.r_D1], axis = 0)
-        self.z = np.concatenate([self.z_A,self.z_B,self.z_C,self.z_D, self.z_D1], axis = 0)
-
-        del self.x1_A, self.x1_B, self.x1_C, self.x1_D, self.x1_D1
-        del self.x2_A, self.x2_B, self.x2_C, self.x2_D, self.x2_D1
-        del self.x3_A, self.x3_B, self.x3_C, self.x3_D, self.x3_D1
-        del self.y_A, self.y_B, self.y_C, self.y_D, self.y_D1
-        del self.fs_A, self.fs_B, self.fs_C, self.fs_D, self.fs_D1
-        del self.r_A, self.r_B, self.r_C, self.r_D, self.r_D1
-        del self.z_A, self.z_B, self.z_C, self.z_D, self.z_D1
+        del self.x1_A, self.x1_B, self.x1_C, self.x1_D
+        del self.x2_A, self.x2_B, self.x2_C, self.x2_D
+        del self.x3_A, self.x3_B, self.x3_C, self.x3_D
+        del self.y_A, self.y_B, self.y_C, self.y_D
+        del self.fs_A, self.fs_B, self.fs_C, self.fs_D
+        del self.r_A, self.r_B, self.r_C, self.r_D
+        del self.z_A, self.z_B, self.z_C, self.z_D
 
         self.x1 = self.x1[:,:,:32]
         self.x2 = self.x2[:,:,:32]
