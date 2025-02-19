@@ -21,6 +21,10 @@ NPY_DIR1 = 'dataset-combustion/npy-PS44'
 NPY_DIR2 = 'dataset-combustion/npy-PSB40-4'
 NPY_DIR3 = 'dataset-combustion/npy-PSB60'
 NPY_DIR4 = 'dataset-combustion/npy-PSB80'
+#NPY_DIR1 = '/home/jorge/mnt/dataset-combustion/Simulations_coflame_yale/npy-PS44'
+#NPY_DIR2 = '/home/jorge/mnt/dataset-combustion/Simulations_coflame_yale/npy-PSB40-4'
+#NPY_DIR3 = '/home/jorge/mnt/dataset-combustion/Simulations_coflame_yale/npy-PSB60'
+#NPY_DIR4 = '/home/jorge/mnt/dataset-combustion/Simulations_coflame_yale/npy-PSB80F'
 
 PERCENT_NOISE = 0.0025
 ADD_NOISE = True
@@ -34,8 +38,8 @@ class MyDataLoader():
         self.x3_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_3 + '.npy')))[20:n_samples,:,:]
         self.y_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, OUTPUT + '.npy')))[20:n_samples,:,:]
         self.fs_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, 'fs.npy')))[20:n_samples,:,:]
-        #self.r_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4  +'.npy')))[20:n_samples,0,:]
-        self.r_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4  +'.npy')))[20:n_samples,:]
+        self.r_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4  +'.npy')))[20:n_samples,0,:]
+        #self.r_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, INPUT_4  +'.npy')))[20:n_samples,:]
         
         self.z_A = np.load(os.path.abspath(os.path.join(NPY_DIR1, 'z.npy')))[20:n_samples,:]
 
@@ -45,16 +49,16 @@ class MyDataLoader():
         self.y_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[20:5010,:,:]
         self.fs_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[20:5010,:,:]
         self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,:]
-        #self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,0,:]
-        self.z_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:5010,:]
+        self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,0,:]
+        #self.z_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:5010,:]
 
         self.x1_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_1 + '.npy')))[20:n_samples,:,:]
         self.x2_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_2 + '.npy')))[20:n_samples,:,:]
         self.x3_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_3 + '.npy')))[20:n_samples,:,:]
         self.y_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, OUTPUT + '.npy')))[20:n_samples,:,:]
         self.fs_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, 'fs.npy')))[20:n_samples,:,:]
-        #self.r_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4  +'.npy')))[20:n_samples,0,:]
-        self.r_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4  +'.npy')))[20:n_samples,:]
+        self.r_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4  +'.npy')))[20:n_samples,0,:]
+        #self.r_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_4  +'.npy')))[20:n_samples,:]
         self.z_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, 'z.npy')))[20:n_samples,:]
 
         self.x1_D = np.load(os.path.abspath(os.path.join(NPY_DIR4, INPUT_1 + '.npy')))[20:n_samples,:128,:]
