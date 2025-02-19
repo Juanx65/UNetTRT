@@ -48,9 +48,9 @@ class MyDataLoader():
         self.x3_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_3 + '.npy')))[20:5010,:,:]
         self.y_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, OUTPUT + '.npy')))[20:5010,:,:]
         self.fs_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'fs.npy')))[20:5010,:,:]
-        self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,:]
+        #self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,:]
         self.r_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_4  +'.npy')))[20:5010,0,:]
-        #self.z_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:5010,:]
+        self.z_B = np.load(os.path.abspath(os.path.join(NPY_DIR2, 'z.npy')))[20:5010,:]
 
         self.x1_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_1 + '.npy')))[20:n_samples,:,:]
         self.x2_C = np.load(os.path.abspath(os.path.join(NPY_DIR3, INPUT_2 + '.npy')))[20:n_samples,:,:]
