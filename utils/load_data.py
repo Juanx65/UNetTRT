@@ -24,6 +24,7 @@ NPY_DIR4 = 'dataset-combustion/npy-PSB80'
 
 PERCENT_NOISE = 0.0025
 ADD_NOISE = True
+n_samples = 7500
 
 class MyDataLoader():
     def __init__(self):
