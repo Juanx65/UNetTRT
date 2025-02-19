@@ -230,7 +230,7 @@ class MyDataLoader():
         self.r_test = self.r_test[:,:32]
         self.z_test = self.z_test[:,:]
 
-        for i in range(len(x2_test)):
+        for i in range(len(self.x2_test)):
             x_max = np.max([self.x1_test[i].max(),self.x2_test[i].max(),self.x3_test[i].max()])
             self.x1_test[i] = self.x1_test[i][::-1]/x_max
             self.x2_test[i] = self.x2_test[i][::-1]/x_max
