@@ -10,10 +10,10 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 
 instalar requirements con
 
-obs: para instalar el torch de los requirements, es necesario contar con cuda 12.2
+obs: para instalar el torch de los requirements, es necesario contar con cuda 12.2 y python 3.10 o menor
 
 ```
-pip install -r requirements.txt
+pip install -r requirements.txt --no-cache-dir --use-pep517
 ```
 
 ---
