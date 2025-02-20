@@ -17,10 +17,10 @@ INPUT_3 = 'B'
 OUTPUT = 'ts'
 INPUT_4 = 'r_axis'
 
-NPY_DIR1 = 'dataset-combustion/npy-PS44'
-NPY_DIR2 = 'dataset-combustion/npy-PSB40-4'
-NPY_DIR3 = 'dataset-combustion/npy-PSB60'
-NPY_DIR4 = 'dataset-combustion/npy-PSB80'
+NPY_DIR1 = 'datasets/dataset-combustion/npy-PS44'
+NPY_DIR2 = 'datasets/dataset-combustion/npy-PSB40-4'
+NPY_DIR3 = 'datasets/dataset-combustion/npy-PSB60'
+NPY_DIR4 = 'datasets/dataset-combustion/npy-PSB80'
 #NPY_DIR1 = '/home/jorge/mnt/dataset-combustion/Simulations_coflame_yale/npy-PS44'
 #NPY_DIR2 = '/home/jorge/mnt/dataset-combustion/Simulations_coflame_yale/npy-PSB40-4'
 #NPY_DIR3 = '/home/jorge/mnt/dataset-combustion/Simulations_coflame_yale/npy-PSB60'
@@ -272,8 +272,8 @@ class MyDataLoader():
     
     def load_data_exp_A(self):
         percentage_noise = 0.0
-        mat_BEMI = os.path.abspath('data_experimental/BEMI/32/ts_BEMI_B2040_case_A.mat')
-        mat_EMI = os.path.abspath('data_experimental/MAE-EMI/32/ts_EMI_case_A.mat')
+        mat_BEMI = os.path.abspath('datasets/data_experimental/BEMI/32/ts_BEMI_B2040_case_A.mat')
+        mat_EMI = os.path.abspath('datasets/data_experimental/MAE-EMI/32/ts_EMI_case_A.mat')
 
         mat = scipy.io.loadmat(mat_EMI)
         ts_emi_A = mat.get('EMI')
