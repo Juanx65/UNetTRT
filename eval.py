@@ -119,10 +119,19 @@ def eval_exp_emi(opt, CASE):
 
 
     ####LOAD######
-    model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size,dropout_rate=opt.dropout)
-    model = torch.load(opt.weights)
-    model.to(device)
-    model.eval()
+    if opt.trt:
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        engine_path = os.path.join(current_directory,opt.weights)
+
+        Engine = engine.TRTModule(engine_path, device)
+        Engine.set_desired(['outputs'])
+        model = Engine
+    
+    else:
+        model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size,dropout_rate=opt.dropout)
+        model = torch.load(opt.weights)
+        model.to(device)
+        model.eval()
 
     # Eval 
     with torch.no_grad():
@@ -204,10 +213,18 @@ def eval_exp_mae(opt, CASE):
 
 
     ####LOAD######
-    model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size, dropout_rate=opt.dropout)
-    model = torch.load(opt.weights)
-    model.to(device)
-    model.eval()
+    if opt.trt:
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        engine_path = os.path.join(current_directory,opt.weights)
+
+        Engine = engine.TRTModule(engine_path, device)
+        Engine.set_desired(['outputs'])
+        model = Engine
+    else:
+        model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size, dropout_rate=opt.dropout)
+        model = torch.load(opt.weights)
+        model.to(device)
+        model.eval()
 
     # Eval 
     with torch.no_grad():
@@ -288,7 +305,6 @@ def eval_exp_mae(opt, CASE):
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', np.nanmean(abs_err)*100/t_emi.mean())
     print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{CASE}.png')
-
 
 def eval_exp_TRT(opt):
     print("experiment")
@@ -517,14 +533,14 @@ def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
-    parser.add_argument('--batch_size', default = 32, type=int,help='batch size to train')
+    parser.add_argument('--batch_size', default = 1, type=int,help='batch size')
     parser.add_argument('--epochs', default = 100, type=int,help='epoch to train')
     parser.add_argument('--kernel_size', default = 3, type=int,help='kernel size')
     parser.add_argument('--dropout', default = 0.247516442744136, type=float,help='percentage dropout to use')
     parser.add_argument('--num_filters', default = 29, type=int,help='Canales de salida de la primera capa conv')
     parser.add_argument('--learning_rate', default = 0.000410, type=float, help='learning rate')
     parser.add_argument('--weights', default= 'weights/best.pth', type=str, help='path to weights')
-    parser.add_argument('--engine', default= 'weights/best.engine', type=str, help='path to engine')
+    parser.add_argument('--engine', default= 'weights/best.engine', type=str, help='path to engine, only on compare')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
     parser.add_argument('--case', default= 'A', type=str, help='condicion de llama ')
     parser.add_argument('--trt', action='store_true', help='si es experimento ')
@@ -539,15 +555,16 @@ def main(opt):
         
     if(opt.compare):
         compare_exp(opt)
-    elif(opt.trt):
-        eval_exp_TRT(opt, opt.case)
     elif(opt.experiment):
         if opt.case == 'A' or opt.case == 'B':
             eval_exp_emi(opt, opt.case)
         else:
             eval_exp_mae(opt, opt.case)
     else:
-        eval(opt)
+        if opt.trt:
+             eval_exp_TRT(opt)
+        else:
+            eval(opt)
 
 if __name__ == '__main__':
     opt = parse_opt()

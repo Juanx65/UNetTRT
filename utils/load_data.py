@@ -324,8 +324,8 @@ class MyDataLoader():
 
     def load_data_exp_B(self):
         percentage_noise = 0.0
-        mat_BEMI = os.path.abspath('data_experimental/BEMI/40/ts_BEMI_B2040_case_B.mat')
-        mat_EMI = os.path.abspath('data_experimental/MAE-EMI/40/ts_EMI_case_B.mat')
+        mat_BEMI = os.path.abspath('datasets/data_experimental/BEMI/40/ts_BEMI_B2040_case_B.mat')
+        mat_EMI = os.path.abspath('datasets/data_experimental/MAE-EMI/40/ts_EMI_case_B.mat')
         
         mat = scipy.io.loadmat(mat_EMI)
         ts_emi_B = mat.get('EMI')
@@ -374,9 +374,9 @@ class MyDataLoader():
     
     def load_data_exp_C(self):
         percentage_noise = 0.0
-        mat_BEMI = os.path.abspath('data_experimental/BEMI/60/ts_BEMI_B2040_case_C.mat')
+        mat_BEMI = os.path.abspath('datasets/data_experimental/BEMI/60/ts_BEMI_B2040_case_C.mat')
         
-        path_mae = 'data_experimental/MAE-EMI/'
+        path_mae = 'datasets/data_experimental/MAE-EMI/'
         mat = scipy.io.loadmat(path_mae + '60/T.mat')
         T_mae = mat.get('T')[:,:,0]
         mat = scipy.io.loadmat(path_mae + '60/fv.mat')

@@ -16,5 +16,6 @@
     * npy-PSB60
     * npy-PSB80
 * datasets/img_preprocess
+* datasets/npy-PS44
 
 Descarga:

@@ -45,7 +45,7 @@ python eval.py --experiment --case X
 ```
 Donde X corresponde a una condición de llama. Por ejemplo, para la llama Yale-60:
 ```
-python eval.py --batch_size 128 --kernel_size 4 --dropout 0.119372 --num_filters 20 --learning_rate 0.001112 --weights 'weights/best_5.pth' --experiment --case C
+python eval.py --kernel_size 4 --dropout 0.119372 --num_filters 20 --learning_rate 0.001112 --weights 'weights/best_5.pth' --experiment --case C
 ```
 
 ### Eval TRT experimental
@@ -75,14 +75,12 @@ por ahora usa por default el path al engine `weights/best.engine` y otros detall
 Luego de entrenar la data y tener el archivo `.pth`, es necesario transformarlo a un `.onnx` con el siguiente codigo
 
 ```
-python onnx_transform.py --weights weights/best.pth --input_shape 1 3 128 32
+python onnx_transform.py --weights weights/best_5.pth --input_shape 1 3 128 32
 ```
 
 Note:
 
 input shape es B C H W
-
-... comprobar si es BCHW o BCWH ...?
 
 ### ENGINE
 

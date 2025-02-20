@@ -1,6 +1,6 @@
 datasets/*
 env/*
-# weights/*
+weights/*
 results/*
 imgs_experimentales/*
 cache/*
