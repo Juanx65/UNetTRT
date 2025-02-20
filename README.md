@@ -44,16 +44,23 @@ Para evaluar en imagenes reales:
 python eval.py --experiment --case X
 ```
 Donde X corresponde a una condición de llama. Por ejemplo, para la llama Yale-60:
+
 ```
-python eval.py --kernel_size 4 --dropout 0.119372 --num_filters 20 --learning_rate 0.001112 --weights 'weights/best_5.pth' --experiment --case C
+python eval.py --weights 'weights/best_5.pth' --experiment --case C
 ```
+
+Existen los casos:
+
+* case A: emi ?¿
+* case B: emi ?¿
+* case C: mae para la llama Yale-60
 
 ### Eval TRT experimental
 
 Por ahora solo se puede probar TRT con la data experimental, para hacerlo, debes usar este codigo
 
 ```
-python eval.py --trt --weights='weights/best.engine'
+python eval.py --weights weights/best_5.engine --experiment --case C
 ```
 
 ### Eval Compare TRT vs Vanilla

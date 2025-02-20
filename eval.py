@@ -205,8 +205,8 @@ def eval_exp_mae(opt, CASE):
     _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
     if   CASE == 'C':
         Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
-    elif CASE == 'D':
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_D()
+    #elif CASE == 'D':
+    #    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_D()
 
     print('SHAPE',Py_exp_interp.shape, t_emi.shape, Sy_cal.shape, Sy_cal.max())
     Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
@@ -535,10 +535,10 @@ def parse_opt():
     parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
     parser.add_argument('--batch_size', default = 1, type=int,help='batch size')
     parser.add_argument('--epochs', default = 100, type=int,help='epoch to train')
-    parser.add_argument('--kernel_size', default = 3, type=int,help='kernel size')
-    parser.add_argument('--dropout', default = 0.247516442744136, type=float,help='percentage dropout to use')
-    parser.add_argument('--num_filters', default = 29, type=int,help='Canales de salida de la primera capa conv')
-    parser.add_argument('--learning_rate', default = 0.000410, type=float, help='learning rate')
+    parser.add_argument('--kernel_size', default = 4, type=int,help='kernel size')
+    parser.add_argument('--dropout', default = 0.119372, type=float,help='percentage dropout to use')
+    parser.add_argument('--num_filters', default = 20, type=int,help='Canales de salida de la primera capa conv')
+    parser.add_argument('--learning_rate', default = 0.001112, type=float, help='learning rate')
     parser.add_argument('--weights', default= 'weights/best.pth', type=str, help='path to weights')
     parser.add_argument('--engine', default= 'weights/best.engine', type=str, help='path to engine, only on compare')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
