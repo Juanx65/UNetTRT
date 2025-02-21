@@ -2,15 +2,14 @@
 
 ## Instalacion
 
-instalar pytorch segun se explica en `https://pytorch.org/get-started/locally/`, ejemplo:
+### Prerquisites
 
-```
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-```
+* Linux (based on Ubuntu 22.04 LTS)
+* Python 3.10 or lower
+* virtualenv
+* CUDA 12.2
 
-instalar requirements con
-
-obs: para instalar el torch de los requirements, es necesario contar con cuda 12.2 y python 3.10 o menor
+### Requirements to install
 
 ```
 pip install -r requirements.txt --no-cache-dir --use-pep517
@@ -23,12 +22,12 @@ pip install -r requirements.txt --no-cache-dir --use-pep517
 Para entrenar usar este comando
 
 ```
-python train.py --batch_size=32 --epochs=100 --dropout=0.089735 --num_filters=29 --learning_rate=0.000410 --weights='weights/best.pth'
+python train.py --batch_size=128 --weights='weights/best.pth'
 ```
 
 ## Eval
 
-### Eval test
+### Eval test -outdated- need review!
 
 Para evaluar en dataset de pruebas:
 
@@ -36,7 +35,7 @@ Para evaluar en dataset de pruebas:
 python eval.py
 ```
 
-### Eval exp
+### Eval Experiment -updated!-
 
 Para evaluar en imagenes reales:
 
@@ -46,7 +45,7 @@ python eval.py --experiment --case X
 Donde X corresponde a una condición de llama. Por ejemplo, para la llama Yale-60:
 
 ```
-python eval.py --weights 'weights/best_5.pth' --experiment --case C
+python eval.py --weights weights/modelo_base_unet.pth --model unet --experiment --case C
 ```
 
 Existen los casos:
@@ -55,15 +54,14 @@ Existen los casos:
 * case B: emi ?¿
 * case C: mae para la llama Yale-60
 
-### Eval TRT experimental
+Existe los modelos:
 
-Por ahora solo se puede probar TRT con la data experimental, para hacerlo, debes usar este codigo
+* unet
+* attunet
+* tensorrt
 
-```
-python eval.py --weights weights/best_5.engine --experiment --case C
-```
 
-### Eval Compare TRT vs Vanilla
+### Eval Compare TRT vs Vanilla -outdated- need review!
 
 Para comparar la red optimizada con TRT vs la red sin optimizacion (VANILLA) se puede de la siguiente manera:
 
