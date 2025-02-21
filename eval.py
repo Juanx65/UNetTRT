@@ -295,26 +295,33 @@ def compare(opt,model1,model2):
     t_bemi = np.ma.masked_where(mask, t_bemi)
 
     #---------------------------  model 1 -------------------------------------#
+    import time
     with torch.no_grad():
+        start_time = time.time()
         output_1 = model1(Py_exp_interp)
-
-    print("output 1 shape: ", output_1.shape)
+        end_time = time.time()
+    print(f"Tiempo de ejecución model1: {end_time - start_time} segundos")
+    #print("output 1 shape: ", output_1.shape)
 
     t_cgan_caseC_1 = destandarize(output_1, y_mean, y_std)[0,0,:,:]
     t_cgan_caseC_1 = t_cgan_caseC_1.cpu().numpy()
-    print("t_cgan_caseC 1 shape: ", t_cgan_caseC_1.shape)
+    #print("t_cgan_caseC 1 shape: ", t_cgan_caseC_1.shape)
     t_cgan_caseC_1 = t_cgan_caseC_1[::-1]
     t_cgan_caseC_1 = np.ma.masked_where(mask,t_cgan_caseC_1)
 
     # ----------------- model 2 ---------------------------------------------------#
+
     with torch.no_grad():
+        start_time = time.time() 
         output_2 = model2(Py_exp_interp)
-    
-    print("output 2 shape: ", output_2.shape)
+        end_time = time.time() 
+
+    print(f"Tiempo de ejecución model2: {end_time - start_time} segundos")
+    #print("output 2 shape: ", output_2.shape)
 
     t_cgan_caseC_2 = destandarize(output_2, y_mean, y_std)[0,0,:,:]
     t_cgan_caseC_2 = t_cgan_caseC_2.cpu().numpy()
-    print("t_cgan_caseC 2 shape: ", t_cgan_caseC_2.shape)
+    #print("t_cgan_caseC 2 shape: ", t_cgan_caseC_2.shape)
     t_cgan_caseC_2 = t_cgan_caseC_2[::-1]
     t_cgan_caseC_2 = np.ma.masked_where(mask,t_cgan_caseC_2)
 
