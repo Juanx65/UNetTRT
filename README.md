@@ -179,16 +179,6 @@ $ pip install torchvision-0.18.0a0+6043bc2-cp310-cp310-linux_aarch64.whl
 ## pip dependecies
 
 ```
-scipy==1.13.0
-random2
-numpy
-matplotlib
-pandas
+tqdm==4.67.1
 scikit-learn
-tqdm==4.66.1
-torchsummary
-opencv-python
-polygraphy==0.49.0
-onnx_opcounter
-tabulate==0.9.0
 ```
