@@ -2,6 +2,7 @@ import torch
 import os
 import numpy as np
 from utils.models.unet import U_Net
+from utils.models.attunet import AttentionUNet
 import matplotlib.pyplot as plt
 from utils.functions import destandarize
 from utils.load_data import MyDataLoader
@@ -104,34 +105,18 @@ def eval(opt):
     plt.savefig('outputs/img/eval.png')
     plt.show()
 
-def eval_exp_emi(opt, CASE):
+def eval_exp_emi(opt, model):
     print("experiment")
     # LOAD DATA
     my_data_loader = MyDataLoader()
     _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
-    if CASE == 'A':
+    if opt.case == 'A':
         Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_A()
     else:
         Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_B()
 
     print('SHAPE',Py_exp_interp.shape, t_emi.shape)
     Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
-
-
-    ####LOAD######
-    if opt.trt:
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        engine_path = os.path.join(current_directory,opt.weights)
-
-        Engine = engine.TRTModule(engine_path, device)
-        Engine.set_desired(['outputs'])
-        model = Engine
-    
-    else:
-        model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size,dropout_rate=opt.dropout)
-        model = torch.load(opt.weights)
-        model.to(device)
-        model.eval()
 
     # Eval 
     with torch.no_grad():
@@ -153,7 +138,7 @@ def eval_exp_emi(opt, CASE):
     t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
     for i in range(3):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
-    if CASE == 'A':
+    if opt.case == 'A':
         y_min=1
         y_max= 3.0
     else:
@@ -193,38 +178,23 @@ def eval_exp_emi(opt, CASE):
     print('Abs. error mean:', abs_err.mean())
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
-    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{CASE}.png')
-    plt.savefig(f'outputs/img/eval_exp_{CASE}.png')
-    savemat(f'outputs/mat/ANN_exp_{CASE}.mat', {"r":r_emi, "z":z_emi, "T": t_cgan_caseC})
+    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
+    plt.savefig(f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
+    savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r_emi, "z":z_emi, "T": t_cgan_caseC})
     plt.show()
 
-def eval_exp_mae(opt, CASE):
+def eval_exp_mae(opt, model):
     print("experiment")
     # LOAD DATA
     my_data_loader = MyDataLoader()
     _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
-    if   CASE == 'C':
+    if   opt.case == 'C':
         Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
     #elif CASE == 'D':
     #    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_D()
 
     print('SHAPE',Py_exp_interp.shape, t_emi.shape, Sy_cal.shape, Sy_cal.max())
     Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
-
-
-    ####LOAD######
-    if opt.trt:
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        engine_path = os.path.join(current_directory,opt.weights)
-
-        Engine = engine.TRTModule(engine_path, device)
-        Engine.set_desired(['outputs'])
-        model = Engine
-    else:
-        model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size, dropout_rate=opt.dropout)
-        model = torch.load(opt.weights)
-        model.to(device)
-        model.eval()
 
     # Eval 
     with torch.no_grad():
@@ -295,8 +265,8 @@ def eval_exp_mae(opt, CASE):
     fig.colorbar(im5, ticks=MaxNLocator(6))
     fig.colorbar(im6, ticks=MaxNLocator(6))
     fig.tight_layout()
-    plt.savefig(f'outputs/img/eval_exp_{CASE}.png')
-    savemat(f'outputs/mat/ANN_exp_{CASE}.mat', {"r":r, "z":z, "T": t_cgan_caseC})
+    plt.savefig(f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
+    savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r, "z":z, "T": t_cgan_caseC})
 
     plt.show()
     print('Abs. error max:', abs_err.max())
@@ -304,7 +274,7 @@ def eval_exp_mae(opt, CASE):
     print('Abs. error mean:', np.nanmean(abs_err))
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', np.nanmean(abs_err)*100/t_emi.mean())
-    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{CASE}.png')
+    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
 
 def eval_exp_TRT(opt):
     print("experiment")
@@ -539,11 +509,10 @@ def parse_opt():
     parser.add_argument('--dropout', default = 0.119372, type=float,help='percentage dropout to use')
     parser.add_argument('--num_filters', default = 20, type=int,help='Canales de salida de la primera capa conv')
     parser.add_argument('--learning_rate', default = 0.001112, type=float, help='learning rate')
+    parser.add_argument('--model', default= 'unet', type=str, help='modelo a evaluar, puede ser tensorrt, unet o attunet.')
     parser.add_argument('--weights', default= 'weights/best.pth', type=str, help='path to weights')
-    parser.add_argument('--engine', default= 'weights/best.engine', type=str, help='path to engine, only on compare')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
-    parser.add_argument('--case', default= 'A', type=str, help='condicion de llama ')
-    parser.add_argument('--trt', action='store_true', help='si es experimento ')
+    parser.add_argument('--case', default= 'A', type=str, help='condicion de llama, puede ser A, B o C')
     parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')
     opt = parser.parse_args()
     return opt
@@ -552,19 +521,38 @@ def main(opt):
     output_directory = 'outputs/img'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
-        
-    if(opt.compare):
-        compare_exp(opt)
-    elif(opt.experiment):
-        if opt.case == 'A' or opt.case == 'B':
-            eval_exp_emi(opt, opt.case)
-        else:
-            eval_exp_mae(opt, opt.case)
+    
+    ####LOAD MODEL######
+    if opt.model == 'tensorrt':
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        engine_path = os.path.join(current_directory,opt.weights)
+        Engine = engine.TRTModule(engine_path, device)
+        Engine.set_desired(['outputs'])
+        model = Engine
+    elif opt.model == 'unet':
+        model = U_Net(n1=opt.num_filters, kernelsize = opt.kernel_size,dropout_rate=opt.dropout)
+    elif opt.model == 'attunet':
+        model = AttentionUNet(first_filters=opt.num_filters, kernelsize = opt.kernel_size, batchnorm= True, dropout_rate=opt.dropout)
     else:
-        if opt.trt:
-             eval_exp_TRT(opt)
+        print('ERROR: especifica un modelo valido, opciones: tensorrt, unet, attunet.')
+    if opt.model == 'unet' or opt.model == 'attunet':
+        model = torch.load(opt.weights)
+        model.to(device)
+        model.eval()
+        
+    #if(opt.compare):
+    #    compare_exp(opt)
+    if(opt.experiment):
+        if opt.case == 'A' or opt.case == 'B':
+            eval_exp_emi(opt, model)
         else:
-            eval(opt)
+            eval_exp_mae(opt, model)
+    #else:
+    #    if opt.model=='tensorrt':
+    #         eval_exp_TRT(opt)
+    #    else:
+    #        eval(opt)
+    ### ES NECESARIO RE HACER LAS FUNCIONES COMPARE_EXP() Y EVAL() ...
 
 if __name__ == '__main__':
     opt = parse_opt()
