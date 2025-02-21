@@ -61,15 +61,13 @@ Existe los modelos:
 * tensorrt
 
 
-### Eval Compare TRT vs Vanilla -outdated- need review!
+### Eval Compare two models -updated!-
 
-Para comparar la red optimizada con TRT vs la red sin optimizacion (VANILLA) se puede de la siguiente manera:
+Para comparar dos modelos se puede de la siguiente manera:
 
 ```
-python eval.py --compare
+python eval.py --weights 'weights/attunet.pth weights/unet.pth' --model 'attunet unet' --case C --compare
 ```
-
-por ahora usa por default el path al engine `weights/best.engine` y otros detalles x parametrizar
 
 ---
 
