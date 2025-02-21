@@ -8,6 +8,7 @@ from utils.functions import destandarize
 from utils.load_data import MyDataLoader
 from matplotlib.ticker import MaxNLocator
 import argparse
+import time
 
 from scipy.io import savemat
 from utils import engine
@@ -295,7 +296,6 @@ def compare(opt,model1,model2):
     t_bemi = np.ma.masked_where(mask, t_bemi)
 
     #---------------------------  model 1 -------------------------------------#
-    import time
     with torch.no_grad():
         start_time = time.time()
         output_1 = model1(Py_exp_interp)
@@ -378,7 +378,7 @@ def compare(opt,model1,model2):
     imVLLA=axcontourf(ax[0],r,z,t_cgan_caseC_2,r'$T_{s}$(U-Net model 2)',levels=np.linspace(1500,2100,50))
     imTRT=axcontourf(ax[1],r,z,t_cgan_caseC_1,r'$T_{s}$(U-Net model 1)',levels=np.linspace(1500,2100,50))
     abs_err = t_cgan_caseC_1 - t_cgan_caseC_2
-    imDTA=axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Nets',levels= np.linspace(-80,80,50),CMAP='bwr')
+    imDTA=axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Nets',levels= np.linspace(-30,30,50),CMAP='bwr')
     abs_err[abs_err>100] = 100
     abs_err[abs_err<-100] = -100
     
@@ -431,6 +431,112 @@ def load_model(opt,model_name, weight):
 
     return model
 
+def compare_extended(opt, model_unet, model_attention_unet, 
+                     model_unet_trt_fp32, model_unet_trt_fp16, model_unet_trt_int8, 
+                     model_attention_unet_trt_fp32,
+                     model_attention_unet_trt_fp16,
+                     model_attention_unet_trt_int8):
+    print("Comparando modelos base y optimizados")
+
+    # LOAD DATA
+    my_data_loader = MyDataLoader()
+    _, _, y_mean, y_std, _, _, _ = my_data_loader.load_test_data()
+    if opt.case == 'A':
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_A()
+    elif opt.case == 'B':
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_B()
+    elif opt.case == 'C':
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
+    #elif opt.case == 'D':
+    #    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_D()     
+    else: # data test
+        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, t_emi, r, z = my_data_loader.load_data_exp()
+    Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
+
+    mask = t_emi<1
+    t_emi = np.ma.masked_where(mask, t_emi)
+    t_bemi = np.ma.masked_where(mask, t_bemi)
+
+    def model_inference(model, data, name=""):
+        with torch.no_grad():
+            start_time = time.time()
+            output = model(data)
+            end_time = time.time()
+            print(f"Tiempo de ejecución {name}: {end_time - start_time:.4f} s")
+        output = destandarize(output, y_mean, y_std)[0, 0, :, :].cpu().numpy()[::-1]
+        return np.ma.masked_where(mask, output)
+
+    # Inferencias UNet
+    unet_output = model_inference(model_unet, Py_exp_interp, "UNet Base")
+    unet_trt_fp32_output = model_inference(model_unet_trt_fp32, Py_exp_interp, "UNet TRT fp32")
+    unet_trt_fp16_output = model_inference(model_unet_trt_fp16, Py_exp_interp, "UNet TRT fp16")
+    unet_trt_int8_output = model_inference(model_unet_trt_int8, Py_exp_interp, "UNet TRT int8")
+
+    # Inferencias Attention UNet
+    attention_unet_output = model_inference(model_attention_unet, Py_exp_interp, "Attention UNet Base")
+    attention_unet_trt_fp32_output = model_inference(model_attention_unet_trt_fp32, Py_exp_interp, "Attention UNet TRT FP32")
+    attention_unet_trt_fp16_output = model_inference(model_attention_unet_trt_fp16, Py_exp_interp, "Attention UNet TRT fp16")
+    attention_unet_trt_int8_output = model_inference(model_attention_unet_trt_int8, Py_exp_interp, "Attention UNet TRT int8")
+
+    # Función para calcular error absoluto
+    def abs_error(base, optimized):
+        error = base - optimized
+        error = np.clip(error, -100, 100)
+        return error
+
+    ##  Configurar figura
+    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    axes[0,0].set_facecolor("darkblue")  
+    axes[0,1].set_facecolor("darkblue")  
+    axes[0,2].set_facecolor("darkblue")
+    axes[0,3].set_facecolor("darkblue")
+    axes[1,0].set_facecolor("darkblue")  
+    axes[1,1].set_facecolor("darkblue")  
+    axes[1,2].set_facecolor("darkblue")  
+    axes[1,3].set_facecolor("darkblue")
+
+    # Plot para UNet
+    unet = axcontourf(axes[0,0], r, z, unet_output, 'Modelo Base UNet', levels=np.linspace(1500, 2100, 50))
+    unet_fp32 = axcontourf(axes[0,1], r, z, abs_error(unet_output, unet_trt_fp32_output), '$\Delta_t$ UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+    unet_fp16 = axcontourf(axes[0,2], r, z, abs_error(unet_output, unet_trt_fp16_output), '$\Delta_t$ UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+    unet_int8 = axcontourf(axes[0,3], r, z, abs_error(unet_output, unet_trt_int8_output), '$\Delta_t$ UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+
+    # Plot para Attention UNet
+    attunet = axcontourf(axes[1,0], r, z, attention_unet_output, 'Modelo Base Attention UNet', levels=np.linspace(1500, 2100, 50))
+    attunet_fp32 = axcontourf(axes[1,1], r, z, abs_error(attention_unet_output, attention_unet_trt_fp32_output), '$\Delta_t$ Att UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+    attunet_fp16 = axcontourf(axes[1,2], r, z, abs_error(attention_unet_output, attention_unet_trt_fp16_output), '$\Delta_t$ Att UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+    attunet_int8 = axcontourf(axes[1,3], r, z, abs_error(attention_unet_output, attention_unet_trt_int8_output), '$\Delta_t$ Att UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+
+    # Ajustes finales
+    fig.colorbar(unet, ax=axes[0, 0], ticks=MaxNLocator(6))
+    fig.colorbar(attunet, ax=axes[1, 0], ticks=MaxNLocator(6))
+    fig.colorbar(unet_fp32, ax=axes[0, 1], ticks=MaxNLocator(6))
+    fig.colorbar(unet_fp16, ax=axes[0, 2], ticks=MaxNLocator(6))
+    fig.colorbar(unet_int8, ax=axes[0, 3], ticks=MaxNLocator(6))
+    fig.colorbar(attunet_fp32, ax=axes[1, 1], ticks=MaxNLocator(6))
+    fig.colorbar(attunet_fp16, ax=axes[1, 2], ticks=MaxNLocator(6))
+    fig.colorbar(attunet_int8, ax=axes[1, 3], ticks=MaxNLocator(6))
+    fig.tight_layout()
+
+    # Guardar y mostrar
+    plt.savefig('outputs/img/compare_extended.png')
+    plt.show()
+
+def compare_all(opt):
+    model_unet = load_model(opt,'unet', 'weights/unet.pth')
+    model_attention_unet = load_model(opt,'attunet', 'weights/attunet.pth')
+    unet_fp32 = load_model(opt,'tensorrt', 'weights/unet_fp32.engine')
+    unet_fp16 = load_model(opt,'tensorrt', 'weights/unet_fp16.engine')
+    unet_int8 = load_model(opt,'tensorrt', 'weights/unet_int8.engine')
+
+    attunet_fp32 = load_model(opt,'tensorrt', 'weights/attunet_fp32.engine')
+    attunet_fp16 = load_model(opt,'tensorrt', 'weights/attunet_fp16.engine')
+    attunet_int8 = load_model(opt,'tensorrt', 'weights/attunet_int8.engine')
+
+    compare_extended(opt, model_unet, model_attention_unet, 
+                     unet_fp32, unet_fp16, unet_int8, 
+                     attunet_fp32,attunet_fp16,attunet_int8)
+
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
@@ -445,6 +551,7 @@ def parse_opt():
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
     parser.add_argument('--case', default= 'A', type=str, help='condicion de llama, puede ser A, B o C')
     parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')
+    parser.add_argument('--compare_all', action='store_true', help='Compara todos los modelos para un solo caso en especifico')
     opt = parser.parse_args()
     return opt
 
@@ -452,8 +559,10 @@ def main(opt):
     output_directory = 'outputs/img'
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
-
-    if opt.compare:
+    
+    if opt.compare_all:
+        compare_all(opt)
+    elif opt.compare:
         models = opt.model.split()  # Divide el string para obtener los dos modelos
         weights = opt.weights.split()
         if len(models) != 2 or len(weights) != 2:
