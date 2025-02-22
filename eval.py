@@ -409,26 +409,85 @@ def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
         ax.set_xticks(ticks=[0, 0.25])#, labels=[0, T_0.shape[1]])
         return x 
 
+def get_model_size_MB(model_path):
+    return os.path.getsize(model_path) / (1024 * 1024) 
+
+def get_parameters_vanilla(model):
+    total_capas = sum(1 for _ in model.modules())
+    total_parametros = sum(p.numel() for p in model.parameters())
+    return total_capas, total_parametros
+
+def get_layers(model_name, model_path):
+    # para que funcione como sudo es necesario correr desde el path del enviroment env/bin/polygraphy
+    if model_name == 'tensorrt':
+        cmd = f"env/bin/polygraphy inspect model {model_path}"
+    else:
+        cmd = f"env/bin/polygraphy inspect model {(model_path).replace('.engine', '.onnx')} --display-as=trt"
+
+    # Ejecuta el comando y captura la salida
+    import subprocess
+    import re
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+
+    # Decodifica la salida a texto
+    output = stdout.decode()
+
+    # Usa una expresión regular para encontrar el número de capas
+    match = re.search(r"---- (\d+) Layer\(s\) ----", output)
+    # Extrae el número de capas si se encuentra el patrón
+    if match:
+        num_layers = int(match.group(1))
+        return num_layers
+    else:
+        print("No se encontró el número de capas")
+        return 0
+
+def get_parametros(model_type, model_path):
+    if model_type == 'tensorrt':
+        cmd = f"env/bin/python utils/param_counter.py --engine ../{model_path}"
+    else:
+        cmd = f"env/bin/onnx_opcounter {(model_path).replace('.engine', '.onnx')}"
+
+    # Ejecuta el comando y captura la salida
+    import subprocess
+    import re
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+
+    # Decodifica la salida a texto
+    output = stdout.decode()
+
+    # Usa una expresión regular para encontrar el número de capas
+    match = re.search(r"Number of parameters in the model: (\d+)", output)
+    if match:
+        num_parameters = int(match.group(1))
+        return num_parameters
+    else:
+        print("No se encontró el número de parametros")
+        return 0
+
 def load_model(opt,model_name, weight):
+    print('----------------------------------------------------------\n')
+    print('Modelo ', model_name, 'path = ', weight,'\n')
 
     if model_name == 'tensorrt':
         current_directory = os.path.dirname(os.path.abspath(__file__))
         engine_path = os.path.join(current_directory, weight)
         model = engine.TRTModule(engine_path, device)
-        model.set_desired(['outputs'])
-    elif model_name == 'unet':
-        model = U_Net(n1=opt.num_filters, kernelsize=opt.kernel_size, dropout_rate=opt.dropout)
-    elif model_name == 'attunet':
-        model = AttentionUNet(first_filters=opt.num_filters, kernelsize=opt.kernel_size, batchnorm=True, dropout_rate=opt.dropout)
-    else:
-        print(f'ERROR: especifica un modelo válido, opciones: tensorrt, unet, attunet. Modelo dado: {opt.model}')
-        return None
-    
-    if model_name == 'unet' or model_name == 'attunet':
+        model.set_desired(['outputs'])    
+        print("# capas onnx = ",get_layers(model_name,weight))
+        print("# parametro onnx = ",get_parametros(model_name,weight))
+    elif model_name == 'unet' or model_name == 'attunet':
         model = torch.load(weight)
         model.to(device)
         model.eval()
-
+        print("# capas base = ", get_parameters_vanilla(model)[0])
+        print("# parametros base = ", get_parameters_vanilla(model)[1])
+    else:
+        print(f'ERROR: especifica un modelo válido, opciones: tensorrt, unet, attunet. Modelo dado: {opt.model}')
+        return None
+    print("tamaño = ",get_model_size_MB(weight), " MB")
     return model
 
 def compare_extended(opt, model_unet, model_attention_unet, 
