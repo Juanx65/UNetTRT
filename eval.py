@@ -373,6 +373,19 @@ def compare(opt,model1,model2):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
     
     #-------------------- PLOTS --------------------------------------------------#
+
+    if opt.case == 'A':
+        y_min=1
+        y_max= 3.0
+    elif opt.case == 'B':
+        y_min=1
+        y_max= 3.5  
+    elif opt.case == 'C':
+        y_min=1
+        y_max=5.5
+        t_max = 2100
+
+        
     plt.rcParams['figure.figsize'] = [6, 4]
     fig, ax = plt.subplots(1,3)
     imVLLA=axcontourf(ax[0],r,z,t_cgan_caseC_2,r'$T_{s}$(U-Net model 2)',levels=np.linspace(1500,2100,50))
