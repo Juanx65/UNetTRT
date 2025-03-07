@@ -412,15 +412,16 @@ def compare(opt,model1,model2):
     plt.savefig('outputs/img/compare.png')#, transparent=True)
     plt.show()
 
-def axcontourf(ax,r,z, data, title, levels=50, Y_MIN=1,Y_MAX=3.5,CMAP='jet'):
-        x = ax.contourf(r, z,data,levels, cmap = CMAP)#, antialiased=False)#,vmin =VMIN, vmax = VMAX)
-        ax.set_xlabel('r (cm)')
-        ax.set_ylabel('z (cm)')
-        ax.set_title(title)
-        ax.set_xlim(0,0.45)
-        ax.set_ylim(Y_MIN, Y_MAX)
-        ax.set_xticks(ticks=[0, 0.25])#, labels=[0, T_0.shape[1]])
-        return x 
+def axcontourf(ax, r, z, data, title, levels=50, Y_MIN=1, Y_MAX=3.5, CMAP='jet'):
+    data = np.clip(data, levels[0], levels[-1])  # Recorta los valores fuera del rango
+    x = ax.contourf(r, z, data, levels, cmap=CMAP)
+    ax.set_xlabel('r (cm)')
+    ax.set_ylabel('z (cm)')
+    ax.set_title(title)
+    ax.set_xlim(0, 0.45)
+    ax.set_ylim(Y_MIN, Y_MAX)
+    ax.set_xticks(ticks=[0, 0.25])
+    return x
 
 def get_model_size_MB(model_path):
     return os.path.getsize(model_path) / (1024 * 1024) 
@@ -481,26 +482,27 @@ def get_parametros(model_type, model_path):
         return 0
 
 def load_model(opt,model_name, weight):
-    print('----------------------------------------------------------\n')
-    print('Modelo ', model_name, 'path = ', weight,'\n')
+    #print('----------------------------------------------------------\n')
+    #print('Modelo ', model_name, 'path = ', weight,'\n')
 
     if model_name == 'tensorrt':
         current_directory = os.path.dirname(os.path.abspath(__file__))
         engine_path = os.path.join(current_directory, weight)
         model = engine.TRTModule(engine_path, device)
         model.set_desired(['outputs'])    
-        print("# capas onnx = ",get_layers(model_name,weight))
-        print("# parametro onnx = ",get_parametros(model_name,weight))
+        
+        #print("# capas onnx = ",get_layers(model_name,weight))
+        #print("# parametro onnx = ",get_parametros(model_name,weight))
     elif model_name == 'unet' or model_name == 'attunet':
         model = torch.load(weight)
         model.to(device)
         model.eval()
-        print("# capas base = ", get_parameters_vanilla(model)[0])
-        print("# parametros base = ", get_parameters_vanilla(model)[1])
+        #print("# capas base = ", get_parameters_vanilla(model)[0])
+        #print("# parametros base = ", get_parameters_vanilla(model)[1])
     else:
         print(f'ERROR: especifica un modelo válido, opciones: tensorrt, unet, attunet. Modelo dado: {opt.model}')
         return None
-    print("tamaño = ",get_model_size_MB(weight), " MB")
+    #print("tamaño = ",get_model_size_MB(weight), " MB")
     return model
 
 def compare_extended(opt, model_unet, model_attention_unet, 
@@ -558,36 +560,49 @@ def compare_extended(opt, model_unet, model_attention_unet,
 
     ##  Configurar figura
     fig, axes = plt.subplots(2, 4, figsize=(20, 10))
-    axes[0,0].set_facecolor("darkblue")  
-    axes[0,1].set_facecolor("darkblue")  
-    axes[0,2].set_facecolor("darkblue")
-    axes[0,3].set_facecolor("darkblue")
-    axes[1,0].set_facecolor("darkblue")  
-    axes[1,1].set_facecolor("darkblue")  
-    axes[1,2].set_facecolor("darkblue")  
-    axes[1,3].set_facecolor("darkblue")
+    axes[0,0].set_facecolor("darkgray")  
+    axes[0,1].set_facecolor("darkgray")  
+    axes[0,2].set_facecolor("darkgray")
+    axes[0,3].set_facecolor("darkgray")
+    axes[1,0].set_facecolor("darkgray")  
+    axes[1,1].set_facecolor("darkgray")  
+    axes[1,2].set_facecolor("darkgray")  
+    axes[1,3].set_facecolor("darkgray")
+
+    if opt.case == 'A':
+        y_min=1
+        y_max= 3.0
+        t_max = 2200
+    elif opt.case == 'B':
+        y_min=1
+        y_max= 3.5  
+        t_max = 2200
+    elif opt.case == 'C':
+        y_min=1
+        y_max=5.5
+        t_max = 2100
 
     # Plot para UNet
-    unet = axcontourf(axes[0,0], r, z, unet_output, 'Modelo Base UNet', levels=np.linspace(1500, 2100, 50))
-    unet_fp32 = axcontourf(axes[0,1], r, z, abs_error(unet_output, unet_trt_fp32_output), '$\Delta_t$ UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr')
-    unet_fp16 = axcontourf(axes[0,2], r, z, abs_error(unet_output, unet_trt_fp16_output), '$\Delta_t$ UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr')
-    unet_int8 = axcontourf(axes[0,3], r, z, abs_error(unet_output, unet_trt_int8_output), '$\Delta_t$ UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+    unet = axcontourf(axes[0,0], r, z, unet_output, 'Modelo Base UNet', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
+    unet_fp32 = axcontourf(axes[0,1], r, z, abs_error(unet_output, unet_trt_fp32_output), '$\Delta_t$ UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
+    unet_fp16 = axcontourf(axes[0,2], r, z, abs_error(unet_output, unet_trt_fp16_output), '$\Delta_t$ UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
+    unet_int8 = axcontourf(axes[0,3], r, z, abs_error(unet_output, unet_trt_int8_output), '$\Delta_t$ UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
 
     # Plot para Attention UNet
-    attunet = axcontourf(axes[1,0], r, z, attention_unet_output, 'Modelo Base Attention UNet', levels=np.linspace(1500, 2100, 50))
-    attunet_fp32 = axcontourf(axes[1,1], r, z, abs_error(attention_unet_output, attention_unet_trt_fp32_output), '$\Delta_t$ Att UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr')
-    attunet_fp16 = axcontourf(axes[1,2], r, z, abs_error(attention_unet_output, attention_unet_trt_fp16_output), '$\Delta_t$ Att UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr')
-    attunet_int8 = axcontourf(axes[1,3], r, z, abs_error(attention_unet_output, attention_unet_trt_int8_output), '$\Delta_t$ Att UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr')
+    attunet = axcontourf(axes[1,0], r, z, attention_unet_output, 'Modelo Base Attention UNet', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
+    attunet_fp32 = axcontourf(axes[1,1], r, z, abs_error(attention_unet_output, attention_unet_trt_fp32_output), '$\Delta_t$ Att UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
+    attunet_fp16 = axcontourf(axes[1,2], r, z, abs_error(attention_unet_output, attention_unet_trt_fp16_output), '$\Delta_t$ Att UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
+    attunet_int8 = axcontourf(axes[1,3], r, z, abs_error(attention_unet_output, attention_unet_trt_int8_output), '$\Delta_t$ Att UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
 
     # Ajustes finales
-    fig.colorbar(unet, ax=axes[0, 0], ticks=MaxNLocator(6))
-    fig.colorbar(attunet, ax=axes[1, 0], ticks=MaxNLocator(6))
-    fig.colorbar(unet_fp32, ax=axes[0, 1], ticks=MaxNLocator(6))
-    fig.colorbar(unet_fp16, ax=axes[0, 2], ticks=MaxNLocator(6))
-    fig.colorbar(unet_int8, ax=axes[0, 3], ticks=MaxNLocator(6))
-    fig.colorbar(attunet_fp32, ax=axes[1, 1], ticks=MaxNLocator(6))
-    fig.colorbar(attunet_fp16, ax=axes[1, 2], ticks=MaxNLocator(6))
-    fig.colorbar(attunet_int8, ax=axes[1, 3], ticks=MaxNLocator(6))
+    fig.colorbar(unet, ax=axes[0, 0], ticks=MaxNLocator(6)).set_label(r'$T$ (K)', rotation=0, labelpad=10)
+    fig.colorbar(attunet, ax=axes[1, 0], ticks=MaxNLocator(6)).set_label(r'$T$ (K)', rotation=0, labelpad=10)
+    fig.colorbar(unet_fp32, ax=axes[0, 1], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
+    fig.colorbar(unet_fp16, ax=axes[0, 2], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
+    fig.colorbar(unet_int8, ax=axes[0, 3], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
+    fig.colorbar(attunet_fp32, ax=axes[1, 1], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
+    fig.colorbar(attunet_fp16, ax=axes[1, 2], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
+    fig.colorbar(attunet_int8, ax=axes[1, 3], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
     fig.tight_layout()
 
     # Guardar y mostrar

@@ -1,4 +1,4 @@
-# ESTADO DEL ARTE TENSORRT
+# PIROMETRIA DEL HOLLIN USANDO TENSORRT
 
 ## Instalacion
 
@@ -50,8 +50,8 @@ python eval.py --weights weights/modelo_base_unet.pth --model unet --experiment 
 
 Existen los casos:
 
-* case A: emi ?¿
-* case B: emi ?¿
+* case A: emi para la llama Yale-32
+* case B: emi para la llama Yale-40
 * case C: mae para la llama Yale-60
 
 Existe los modelos:
@@ -61,13 +61,36 @@ Existe los modelos:
 * tensorrt
 
 
-### Eval Compare two models -updated!-
+### Eval Compare two models
 
 Para comparar dos modelos se puede de la siguiente manera:
 
 ```
 python eval.py --weights 'weights/attunet.pth weights/unet.pth' --model 'attunet unet' --case C --compare
 ```
+
+---
+
+### Eval Compare all models
+
+Para comparar todos los modelos previamente entrenados y/o optimizados, es decir:
+
+* modelo base unet
+* modelo base attention unet
+* TRT fp32 unet
+* TRT fp16 unet
+* TRT int8 unet
+* TRT fp32 att unet
+* TRT fp16 att unet
+* TRT int8 att unet
+
+Para un caso particular 
+
+```
+python eval.py --experiment --compare_all --case X
+```
+
+Donde X corresponde a una condición de llama. (A, B o C)
 
 ---
 
