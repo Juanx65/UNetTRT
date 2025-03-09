@@ -625,9 +625,9 @@ def compare_extended(opt, model_unet, model_attention_unet,
     cbar_trt = fig.colorbar(unet_int8, cax=cbar_ax_right, ticks=MaxNLocator(6))
     cbar_trt.ax.set_title(r'$\Delta T$ [K]', fontsize=16)
 
-    
     fig.tight_layout()
-    plt.savefig('outputs/img/compare_extended.png')
+    #plt.savefig('outputs/img/compare_extended.png')
+    plt.savefig(f'outputs/img/compare_extended_case_{opt.case}.pdf', format='pdf', bbox_inches='tight')
     plt.show()
 
 def compare_all(opt):
