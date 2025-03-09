@@ -583,8 +583,8 @@ def compare_extended(opt, model_unet, model_attention_unet,
         return error
 
     ##  Configurar figura
-    fig = plt.figure(figsize=(14, 10))
-    gs = GridSpec(2, 8, width_ratios=[0.1,0.3,1, 1, 1, 1,0.2,0.1],wspace=0.1,hspace=0.3)
+    fig = plt.figure(figsize=(12, 7))
+    gs = GridSpec(2, 8, width_ratios=[0.1,0.3,1, 1, 1, 1,0.2,0.1],wspace=0.1,hspace=0.35)
     axes = [[fig.add_subplot(gs[i, j]) for j in range(8)] for i in range(2)]
 
     for row in axes:
