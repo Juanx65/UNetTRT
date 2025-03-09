@@ -9,6 +9,7 @@ from utils.load_data import MyDataLoader
 from matplotlib.ticker import MaxNLocator
 import argparse
 import time
+from matplotlib.gridspec import GridSpec
 
 from scipy.io import savemat
 from utils import engine
@@ -26,6 +27,17 @@ else:
 device = torch.device("cuda:0" if train_on_gpu else "cpu")
 
 os.environ['CUDA_MODULE_LOADING'] = 'LAZY'
+
+# Aumentar tamaño de fuente globalmente
+plt.rcParams.update({
+    'font.size': 14,  # Tamaño de fuente global
+    'axes.titlesize': 16,  # Tamaño de los títulos de los ejes
+    'axes.labelsize': 16,  # Tamaño de las etiquetas de los ejes
+    'xtick.labelsize': 14,  # Tamaño de los valores en el eje X
+    'ytick.labelsize': 14,  # Tamaño de los valores en el eje Y
+    'legend.fontsize': 14,  # Tamaño de la fuente en la leyenda
+    'figure.titlesize': 14  # Tamaño del título de la figura
+})
 
 def eval(opt, model):
     # LOAD DATA
@@ -412,15 +424,27 @@ def compare(opt,model1,model2):
     plt.savefig('outputs/img/compare.png')#, transparent=True)
     plt.show()
 
-def axcontourf(ax, r, z, data, title, levels=50, Y_MIN=1, Y_MAX=3.5, CMAP='jet'):
+def axcontourf(ax, r, z, data, title, levels=50, Y_MIN=1, Y_MAX=3.5, CMAP='jet',show_axes=True,ftitle=None):
     data = np.clip(data, levels[0], levels[-1])  # Recorta los valores fuera del rango
     x = ax.contourf(r, z, data, levels, cmap=CMAP)
-    ax.set_xlabel('r (cm)')
-    ax.set_ylabel('z (cm)')
     ax.set_title(title)
     ax.set_xlim(0, 0.45)
     ax.set_ylim(Y_MIN, Y_MAX)
-    ax.set_xticks(ticks=[0, 0.25])
+    if show_axes:
+        ax.set_xticks(ticks=[0, 0.25])
+        ax.set_xlabel('r (cm)')
+        ax.set_ylabel('z (cm)')
+    else:
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+    if isinstance(ftitle, str) and ftitle:
+        ax.yaxis.set_label_position('right')
+        ax.yaxis.tick_right()
+        ax.set_ylabel(ftitle, fontsize=16, rotation=-90, labelpad=15,fontweight='bold')
     return x
 
 def get_model_size_MB(model_path):
@@ -559,53 +583,50 @@ def compare_extended(opt, model_unet, model_attention_unet,
         return error
 
     ##  Configurar figura
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
-    axes[0,0].set_facecolor("darkgray")  
-    axes[0,1].set_facecolor("darkgray")  
-    axes[0,2].set_facecolor("darkgray")
-    axes[0,3].set_facecolor("darkgray")
-    axes[1,0].set_facecolor("darkgray")  
-    axes[1,1].set_facecolor("darkgray")  
-    axes[1,2].set_facecolor("darkgray")  
-    axes[1,3].set_facecolor("darkgray")
+    fig = plt.figure(figsize=(14, 10))
+    gs = GridSpec(2, 8, width_ratios=[0.1,0.3,1, 1, 1, 1,0.2,0.1],wspace=0.1,hspace=0.3)
+    axes = [[fig.add_subplot(gs[i, j]) for j in range(8)] for i in range(2)]
+
+    for row in axes:
+        for ax in row:
+            ax.set_facecolor("darkgray")
+
+    for i in [0, 1]:
+        for j in [0,1,6,7]:
+            axes[i][j].axis("off")  
+            axes[i][j].set_frame_on(False)
 
     if opt.case == 'A':
-        y_min=1
-        y_max= 3.0
-        t_max = 2200
+        y_min, y_max, t_max = 1, 3.0, 2200
     elif opt.case == 'B':
-        y_min=1
-        y_max= 3.5  
-        t_max = 2200
+        y_min, y_max, t_max = 1, 3.5, 2200
     elif opt.case == 'C':
-        y_min=1
-        y_max=5.5
-        t_max = 2100
+        y_min, y_max, t_max = 1, 5.5, 2100
 
     # Plot para UNet
-    unet = axcontourf(axes[0,0], r, z, unet_output, 'Modelo Base UNet', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
-    unet_fp32 = axcontourf(axes[0,1], r, z, abs_error(unet_output, unet_trt_fp32_output), '$\Delta_t$ UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
-    unet_fp16 = axcontourf(axes[0,2], r, z, abs_error(unet_output, unet_trt_fp16_output), '$\Delta_t$ UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
-    unet_int8 = axcontourf(axes[0,3], r, z, abs_error(unet_output, unet_trt_int8_output), '$\Delta_t$ UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
+    unet = axcontourf(axes[0][2], r, z, unet_output, 'Modelo Base', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
+    unet_fp32 = axcontourf(axes[0][3], r, z, abs_error(unet_output, unet_trt_fp32_output), '$\Delta_t$ TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    unet_fp16 = axcontourf(axes[0][4], r, z, abs_error(unet_output, unet_trt_fp16_output), '$\Delta_t$ TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    unet_int8 = axcontourf(axes[0][5], r, z, abs_error(unet_output, unet_trt_int8_output), '$\Delta_t$ TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False,ftitle="U-Net")
 
     # Plot para Attention UNet
-    attunet = axcontourf(axes[1,0], r, z, attention_unet_output, 'Modelo Base Attention UNet', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
-    attunet_fp32 = axcontourf(axes[1,1], r, z, abs_error(attention_unet_output, attention_unet_trt_fp32_output), '$\Delta_t$ Att UNet TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
-    attunet_fp16 = axcontourf(axes[1,2], r, z, abs_error(attention_unet_output, attention_unet_trt_fp16_output), '$\Delta_t$ Att UNet TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
-    attunet_int8 = axcontourf(axes[1,3], r, z, abs_error(attention_unet_output, attention_unet_trt_int8_output), '$\Delta_t$ Att UNet TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min)
+    attunet = axcontourf(axes[1][2], r, z, attention_unet_output, 'Modelo Base', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
+    attunet_fp32 = axcontourf(axes[1][3], r, z, abs_error(attention_unet_output, attention_unet_trt_fp32_output), '$\Delta_t$ TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    attunet_fp16 = axcontourf(axes[1][4], r, z, abs_error(attention_unet_output, attention_unet_trt_fp16_output), '$\Delta_t$ TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    attunet_int8 = axcontourf(axes[1][5], r, z, abs_error(attention_unet_output, attention_unet_trt_int8_output), '$\Delta_t$ TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False,ftitle="Att. U-Net")
 
-    # Ajustes finales
-    fig.colorbar(unet, ax=axes[0, 0], ticks=MaxNLocator(6)).set_label(r'$T$ (K)', rotation=0, labelpad=10)
-    fig.colorbar(attunet, ax=axes[1, 0], ticks=MaxNLocator(6)).set_label(r'$T$ (K)', rotation=0, labelpad=10)
-    fig.colorbar(unet_fp32, ax=axes[0, 1], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
-    fig.colorbar(unet_fp16, ax=axes[0, 2], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
-    fig.colorbar(unet_int8, ax=axes[0, 3], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
-    fig.colorbar(attunet_fp32, ax=axes[1, 1], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
-    fig.colorbar(attunet_fp16, ax=axes[1, 2], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
-    fig.colorbar(attunet_int8, ax=axes[1, 3], ticks=MaxNLocator(6)).set_label(r'$\Delta T$ (K)', rotation=0, labelpad=10)
+    # Colorbars
+    cbar_ax_left = fig.add_subplot(gs[:, 0])  # Colorbar izquierdo en ambas filas
+    cbar_ax_right = fig.add_subplot(gs[:, 7])  # Colorbar derecho en ambas filas
+    
+    cbar_unet = fig.colorbar(unet, cax=cbar_ax_left, ticks=MaxNLocator(6))
+    cbar_unet.ax.yaxis.set_ticks_position('left') 
+    cbar_unet.ax.set_title(r'$T$ [K]', fontsize=16)
+    cbar_trt = fig.colorbar(unet_int8, cax=cbar_ax_right, ticks=MaxNLocator(6))
+    cbar_trt.ax.set_title(r'$\Delta T$ [K]', fontsize=16)
+
+    
     fig.tight_layout()
-
-    # Guardar y mostrar
     plt.savefig('outputs/img/compare_extended.png')
     plt.show()
 
