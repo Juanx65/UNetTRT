@@ -8,6 +8,11 @@
 * Python 3.10 o inferior
 * CUDA 12.2
 
+## Dataset
+
+Los datasets utilizados en este trabajo pueden descargarse desde el siguiente 
+[enlace](https://drive.google.com/drive/folders/1lYqGvNBEsVsJ2xiGPNvcZCEPdD_nZ9Aa?usp=sharing).
+
 ### Instalación de requisitos
 
 ```
