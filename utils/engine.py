@@ -1,3 +1,8 @@
+""" 
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+                                                    IMPORTS
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+"""
 import os
 import pickle
 from collections import defaultdict, namedtuple
@@ -13,10 +18,10 @@ import sys
 import random
 
 try:
-    from processing import process_llamas as preprocessing
+    from processing import process_llamas as preprocessing # preprocess_juanjo # recuerda cambiar a esta funcion de pre procesamiento para los experimentos de juanjo
 except ImportError:
     try:
-        from utils.processing import process_llamas as preprocessing
+        from utils.processing import process_llamas as preprocessing # preprocess_juanjo #
     except ImportError:
         print("No se pudo importar el módulo de procesamiento.")
 
@@ -24,26 +29,48 @@ import onnx
 import tensorrt as trt
 import torch
 
+""" 
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+                                                    LOGGERS AND LAZY LOADING
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+"""
+
 os.environ['CUDA_MODULE_LOADING'] = 'LAZY'
 #logging.basicConfig(level=logging.DEBUG,format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",datefmt="%Y-%m-%d %H:%M:%S")
 logging.getLogger('PIL').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+""" 
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+                                                    GLOBALS
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+"""
 BATCH_SIZE = 1
+MAX_BATCH_SIZE = 256
 CHANNEL = 3
-HEIGHT = 128
-WIDTH = 32
+HEIGHT = 224
+WIDTH = 224
 
 CACHE_FOLDER = "outputs/cache/"
 
+""" 
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+                                                    CLASSES
+/ -----------------------------------------------------------------------------------------------------------------------------------------/
+"""
 class EngineBuilder:
-    seg = False
-
     def __init__(
             self,
             checkpoint: Union[str, Path],
             device: Optional[Union[str, int, torch.device]] = None) -> None:
-        
+        """
+        __init__ initializes the engine builder.
+
+        :param self: Reference to the current instance of the class.
+        :param checkpoint: Path to the ONNX model file.
+        :param device: The device to run the model on, can be a string, integer, or torch.device. (usually 'cuda:0' for cuda devices)
+        :return: None
+        """ 
         checkpoint = Path(checkpoint) if isinstance(checkpoint,str) else checkpoint
         assert checkpoint.exists() and checkpoint.suffix in ('.onnx')
 
@@ -54,58 +81,105 @@ class EngineBuilder:
 
         self.checkpoint = checkpoint
         self.device = device
+
     def __build_engine(self,
                        fp32: bool = True,
                        fp16: bool = False,
                        int8: bool = False,
-                       input_shape: Union[List, Tuple] = (1,3,128, 32),
+                       input_shape: Union[List, Tuple] = (BATCH_SIZE,CHANNEL,HEIGHT, WIDTH),#NCHW
+                       build_op_lvl: int = 3,
+                       avg_timing_iterations: int = 1,
+                       engine_name: str = 'best.engine',
                        with_profiling: bool = True) -> None:
+        """
+        __build_engine constructs the TensorRT engine from the ONNX model.
+
+        :param self: Reference to the current instance of the class.
+        :param fp32: Whether to build the engine with FP32 precision.
+        :param fp16: Whether to build the engine with FP16 precision.
+        :param int8: Whether to build the engine with INT8 precision.
+        :param input_shape: The shape of the input tensor, in the 
+            (Number of image in the batch (batch size), Number of channels, Height of the image, Width of the image)    
+            or NCHW format.
+        :param engine_name: The name of the output engine file.
+        :param with_profiling: Whether to include detailed profiling information.
+        :return: None
+        """
+
+        # loggers
         logger = trt.Logger(trt.Logger.WARNING)
         trt.init_libnvinfer_plugins(logger, namespace='')
         builder = trt.Builder(logger)
+        
+        # creates the builder configuration
         config = builder.create_builder_config()
-        config.max_workspace_size = torch.cuda.get_device_properties(self.device).total_memory
+        
+        profile = builder.create_optimization_profile()
 
-        if(input_shape[0] == -1): # solo si se hara un engine para batch size dinamico
-            # para trabajar con batch size dinamico
-            profile = builder.create_optimization_profile()
+        if(input_shape[0] == -1): # Only if an engine for dynamic batch size will be made
+            #  to work with dynamic batch size
 
-            # dimensions for dynamic input "images" defined in the onnx_transform script
+            # Dimensions for a dynamic input, with minimum, optimal, and maximum dimensions
+            # for dynamic input "images" defined in the onnx_transform script
             min_in_dims = trt.Dims4(1,input_shape[1],input_shape[2],input_shape[3])
-            max_in_dims = trt.Dims4(256,input_shape[1],input_shape[2],input_shape[3])
+            op_in_dims = trt.Dims4(int(MAX_BATCH_SIZE/2),input_shape[1],input_shape[2],input_shape[3])
+            max_in_dims = trt.Dims4(MAX_BATCH_SIZE,input_shape[1],input_shape[2],input_shape[3])
 
-            profile.set_shape("images", min_in_dims, max_in_dims, max_in_dims)
-            config.add_optimization_profile(profile) # Agrega el perfil de optimización a la configuración
-            #continua el codigo como antes
+            profile.set_shape("images", min_in_dims, op_in_dims, max_in_dims)
 
+            # Only if an engine for dynamic batch size with int8 cuantization will be made
+            if int8 and builder.platform_has_fast_int8:
+                config.set_calibration_profile(profile)  
+             
+            # builder configuration: Add the dyncamic batch size config just made       
+        
+        config.add_optimization_profile(profile)
+
+        # builder configuration: max_workspace_size limits the amount of memory that any layer in the model can use, set to total device memory
+        config.max_workspace_size = torch.cuda.get_device_properties(self.device).total_memory
+        
+        # builder configuration: builder_optimization_level he builder optimization level which TensorRT should build the engine at. Setting a higher optimization level allows TensorRT to spend longer engine building time searching for more optimization options. The resulting engine may have better performance compared to an engine built with a lower optimization level. The default optimization level is 3. Valid values include integers from 0 to the maximum optimization level, which is currently 5. Setting it to be greater than the maximum level results in identical behavior to the maximum level.
+        config.builder_optimization_level = build_op_lvl
+        
+        # builder configuration: avg_timing_iterations  The number of averaging iterations used when timing layers. When timing layers, the builder minimizes over a set of average times for layer execution. This parameter controls the number of iterations used in averaging. By default the number of averaging iterations is 1.
+        config.avg_timing_iterations = avg_timing_iterations
+
+        # Indicates to the network definition that it will use explicit batch
         flag = (1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+
         network = builder.create_network(flag)
 
         self.logger = logger
         self.builder = builder
         self.network = network
 
+        # parses the network definition from the onnx model
         self.build_from_onnx()
 
+        # network configuration
         if ~fp32:
             if fp16 and self.builder.platform_has_fast_fp16:
+                # builder configuration: Here we indicate that we will be working with FP16 precision
                 config.set_flag(trt.BuilderFlag.FP16)
             if int8 and self.builder.platform_has_fast_int8:
                 ## Carga de los datos
-                calibration_file = get_calibration_files(calibration_data="datasets/img_preprocess/")
+                calibration_file = get_calibration_files(calibration_data="datasets/img_preprocess/")#"datasets/img_preprocess/")# "datasets/img_crop_test/" # para juanjo usar img_crop_test
                 Int8_calibrator = ImagenetCalibrator(calibration_files=calibration_file,
                                                      batch_size=input_shape[0],
-                                                     input_shape=(input_shape[1],input_shape[2],input_shape[3]),
+                                                     input_shape=(input_shape[1],input_shape[2],input_shape[3]), #(input_shape[1],input_shape[2],input_shape[3]),# (1,1,input_shape[1])# para juanjo usar 1,1,nx como input shape
                                                      preprocess_func=preprocessing)
-   
+                # builder configuration: Here we indicate that we will be working with INT8 calibration
                 config.set_flag(trt.BuilderFlag.INT8)
                 config.int8_calibrator = Int8_calibrator
+                # builder configuration: If neither FP16 nor INT8 are set, it defaults to working with FP32
     
-        self.weight = self.checkpoint.with_suffix('.engine')
+        #self.weight = self.checkpoint.with_suffix('.engine')
+        self.weight = self.checkpoint.with_name(engine_name)
 
         if with_profiling:
             config.profiling_verbosity = trt.ProfilingVerbosity.DETAILED
         with self.builder.build_engine(self.network, config) as engine:
+            # Engine serialization to save it in a plan (.engine)
             self.weight.write_bytes(engine.serialize())
         self.logger.log(
             trt.Logger.WARNING, f'Build tensorrt engine finish.\n'
@@ -116,16 +190,40 @@ class EngineBuilder:
               fp16: bool = False,
               int8: bool = False,
               input_shape: Union[List, Tuple] = (1, 3, 128, 32),
+              build_op_lvl =  3,
+              avg_timing_iterations = 1,
+              engine_name: str = 'best.engine',
               with_profiling=True) -> None:
-        self.__build_engine(fp32, fp16, int8, input_shape, with_profiling)
+        """
+        build initiates the engine building process.
+
+        :param self: Reference to the current instance of the class.
+        :param fp32: Whether to build the engine with FP32 precision.
+        :param fp16: Whether to build the engine with FP16 precision.
+        :param int8: Whether to build the engine with INT8 precision.
+        :param input_shape: The shape of the input tensor.
+        :param engine_name: The name of the output engine file.
+        :param with_profiling: Whether to include detailed profiling information.
+        :return: None
+        """
+        self.__build_engine(fp32, fp16, int8, input_shape,build_op_lvl,avg_timing_iterations, engine_name, with_profiling)
 
     def build_from_onnx(self):
+        """
+        build_from_onnx parses the ONNX model and populates the TensorRT network definition.
+
+        :param self: Reference to the current instance of the class.
+        :return: None
+        """
+        # here, parser uses the OnnxParser functionality integrated with tensorrt to populate the network definition
         parser = trt.OnnxParser(self.network, self.logger)
         onnx_model = onnx.load(str(self.checkpoint))
-
+        
         if not parser.parse(onnx_model.SerializeToString()):
             raise RuntimeError(
                 f'failed to load ONNX file: {str(self.checkpoint)}')
+
+        # here, inputs and outputs define the inputs and outputs of the ONNX network that are required for the network definition
         inputs = [
             self.network.get_input(i) for i in range(self.network.num_inputs)
         ]
@@ -263,8 +361,6 @@ class TRTModule(torch.nn.Module):
         return tuple(outputs[i]
                      for i in self.idx) if len(outputs) > 1 else outputs[0]
 
-
-
 class TRTProfilerV1(trt.IProfiler):
 
     def __init__(self):
@@ -286,20 +382,6 @@ class TRTProfilerV1(trt.IProfiler):
         print(f'\nTotal Inference Time: {self.total_runtime:.4f}(us)')
 
 def get_calibration_files(calibration_data, max_calibration_size=None, allowed_extensions=("JPEG",".jpeg", ".jpg", ".png",".tiff")):
-    """Returns a list of all filenames ending with `allowed_extensions` found in the `calibration_data` directory.
-    Parameters
-    ----------
-    calibration_data: str
-        Path to directory containing desired files.
-    max_calibration_size: int
-        Max number of files to use for calibration. If calibration_data contains more than this number,
-        a random sample of size max_calibration_size will be returned instead. If None, all samples will be used.
-    Returns
-    -------
-    calibration_files: List[str]
-         List of filenames contained in the `calibration_data` directory ending with `allowed_extensions`.
-    """
-
     logger.info("Collecting calibration files from: {:}".format(calibration_data))
     calibration_files = [path for path in glob.iglob(os.path.join(calibration_data, "**"), recursive=True)
                          if os.path.isfile(path) and path.lower().endswith(allowed_extensions)]
@@ -317,35 +399,15 @@ def get_calibration_files(calibration_data, max_calibration_size=None, allowed_e
     return calibration_files
 
 class ImagenetCalibrator(trt.IInt8EntropyCalibrator2):
-    """
-        https://docs.nvidia.com/deeplearning/sdk/tensorrt-api/python_api/infer/Int8/EntropyCalibrator2.html
-
-        INT8 Calibrator Class for Imagenet-based Image Classification Models.
-        Parameters
-        ----------
-        calibration_files: List[str]
-            List of image filenames to use for INT8 Calibration
-        batch_size: int
-            Number of images to pass through in one batch during calibration
-        input_shape: Tuple[int]
-            Tuple of integers defining the shape of input to the model (Default: (3, 224, 224))
-        cache_file: str
-            Name of file to read/write calibration cache from/to.
-        preprocess_func: function -> numpy.ndarray
-            Pre-processing function to run on calibration data. This should match the pre-processing
-            done at inference time. In general, this function should return a numpy array of
-            shape `input_shape`.
-    """
     def __init__(self, calibration_files=[], batch_size=BATCH_SIZE, 
                  input_shape=(CHANNEL, HEIGHT, WIDTH),
                  cache_file=CACHE_FOLDER+"calibration.cache", preprocess_func=None):
         super().__init__()
         self.input_shape = input_shape
         self.cache_file = cache_file
-        self.batch_size = batch_size
+        self.batch_size = MAX_BATCH_SIZE if batch_size == -1 else batch_size
+
         self.batch = np.zeros((self.batch_size, *self.input_shape), dtype=np.float32)
-        
-        # Inicializa un tensor en la GPU usando torch
         self.device_input = torch.zeros(self.batch_size, *self.input_shape, dtype=torch.float32, device='cuda')
 
         self.files = calibration_files

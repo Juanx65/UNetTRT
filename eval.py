@@ -506,8 +506,8 @@ def get_parametros(model_type, model_path):
         return 0
 
 def load_model(opt,model_name, weight):
-    #print('----------------------------------------------------------\n')
-    #print('Modelo ', model_name, 'path = ', weight,'\n')
+    print('----------------------------------------------------------\n')
+    print('Modelo ', model_name, 'path = ', weight,'\n')
 
     if model_name == 'tensorrt':
         current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -515,18 +515,18 @@ def load_model(opt,model_name, weight):
         model = engine.TRTModule(engine_path, device)
         model.set_desired(['outputs'])    
         
-        #print("# capas onnx = ",get_layers(model_name,weight))
-        #print("# parametro onnx = ",get_parametros(model_name,weight))
+        print("# capas onnx = ",get_layers(model_name,weight))
+        print("# parametro onnx = ",get_parametros(model_name,weight))
     elif model_name == 'unet' or model_name == 'attunet':
         model = torch.load(weight)
         model.to(device)
         model.eval()
-        #print("# capas base = ", get_parameters_vanilla(model)[0])
-        #print("# parametros base = ", get_parameters_vanilla(model)[1])
+        print("# capas base = ", get_parameters_vanilla(model)[0])
+        print("# parametros base = ", get_parameters_vanilla(model)[1])
     else:
         print(f'ERROR: especifica un modelo válido, opciones: tensorrt, unet, attunet. Modelo dado: {opt.model}')
         return None
-    #print("tamaño = ",get_model_size_MB(weight), " MB")
+    print("tamaño = ",get_model_size_MB(weight), " MB")
     return model
 
 def compare_extended(opt, model_unet, model_attention_unet, 
@@ -649,13 +649,8 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
     parser.add_argument('--batch_size', default = 1, type=int,help='batch size')
-    parser.add_argument('--epochs', default = 100, type=int,help='epoch to train')
-    parser.add_argument('--kernel_size', default = 4, type=int,help='kernel size')
-    parser.add_argument('--dropout', default = 0.119372, type=float,help='percentage dropout to use')
-    parser.add_argument('--num_filters', default = 20, type=int,help='Canales de salida de la primera capa conv')
-    parser.add_argument('--learning_rate', default = 0.001112, type=float, help='learning rate')
-    parser.add_argument('--model', default= 'unet', type=str, help='modelo a evaluar, puede ser tensorrt, unet o attunet, if compare, use a string separate with a space with the two models to compare.')
-    parser.add_argument('--weights', default= 'weights/best.pth', type=str, help='path to weights, if compare, use a string separate with a space with the two paths of weights to compare')
+    parser.add_argument('--model', default= 'attunet', type=str, help='modelo a evaluar, puede ser tensorrt, unet o attunet, if compare, use a string separate with a space with the two models to compare.')
+    parser.add_argument('--weights', default= 'weights/attunet.pth', type=str, help='path to weights, if compare, use a string separate with a space with the two paths of weights to compare')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
     parser.add_argument('--case', default= 'A', type=str, help='condicion de llama, puede ser A, B o C')
     parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')

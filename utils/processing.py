@@ -205,7 +205,6 @@ def preprocess_imagenet(image, channels=3, height=224, width=224):
 
     return img_data
 
-
 def preprocess_inception(image, channels=3, height=224, width=224):
     """Pre-processing for InceptionV1. Inception expects different pre-processing
     than {resnet50, vgg16, mobilenet}. This may not be totally correct,
