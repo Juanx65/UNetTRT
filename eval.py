@@ -14,6 +14,10 @@ from matplotlib.gridspec import GridSpec
 from scipy.io import savemat
 from utils import engine
 
+from utils.processing import process_llamas
+from torchvision import transforms
+from PIL import Image
+
 import logging
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
@@ -645,16 +649,179 @@ def compare_all(opt):
                      unet_fp32, unet_fp16, unet_int8, 
                      attunet_fp32,attunet_fp16,attunet_int8)
 
+def closeness(opt):
+
+    base_model = load_model(opt,(opt.model).split(" ")[0], (opt.weights).split(" ")[0])
+    trt_model = load_model(opt,(opt.model).split(" ")[1], (opt.weights).split(" ")[1])
+
+    """
+    #process_llamas
+
+    ################################################################
+    # Cambiar a modo evaluación
+    model.eval()
+
+    # Definir porcentajes del tolerancia segun el maximo valor encontrado (en un percentil del 90%)
+    porcentajes = [0.005, 0.01, 0.1, 0.2, 0.5, 1]
+
+    # Inicializar diccionarios para almacenar estadísticas por motor
+    engine_stats = {name: {'correct': 0, 'total': 0, 'close_counts': [0]*len(porcentajes)} for name in engines.keys()}
+    total_samples = 0
+    total_elements = 0
+
+    # Dispositivo
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Coleccionar todas las salidas del modelo base y los motores para calcular el percentil 90
+    outputs_vanilla_list = []
+    outputs_all_list = []
+
+    # Primero, procesar los datos para coleccionar outputs_vanilla y outputs de los motores
+    with torch.no_grad():
+        for i, (input, target) in enumerate(val_loader):
+            input = input.to(device)
+            target = target.to(device)
+            if input.size(0) != batch_size:
+                print(f"Deteniendo la evaluación. Tamaño del lote ({input.size(0)}) no es igual a batch_size ({batch_size}).")
+                break
+
+            # Calcular salida para el modelo base
+            output_vanilla = model(input)
+            outputs_vanilla_list.append(output_vanilla.cpu())
+            outputs_all_list.append(output_vanilla.cpu())
+
+            # Calcular salidas para cada motor y agregarlas a outputs_all_list
+            for name, engine in engines.items():
+                output_engine = engine(input)
+                outputs_all_list.append(output_engine.cpu())
+
+            total_samples += input.size(0)
+            total_elements += output_vanilla.numel()
+
+    # Concatenar todas las salidas
+    outputs_vanilla_all = torch.cat(outputs_vanilla_list).flatten()
+    outputs_all = torch.cat(outputs_all_list).flatten()
+
+    # Calcular el valor máximo según el percentil 90 utilizando todas las salidas
+    max_value = np.percentile(np.abs(outputs_all.numpy()), 90)
+    #max_value = np.max(np.abs(outputs_all.numpy()))
+
+
+    # Calcular los rtols según tu especificación
+    rtols = [p * max_value for p in porcentajes]
+
+    # Ahora, procesar los datos nuevamente para calcular las estadísticas por motor
+    with torch.no_grad():
+        for i, (input, target) in enumerate(val_loader):
+            input = input.to(device)
+            target = target.to(device)
+            if input.size(0) != batch_size:
+                print(f"Deteniendo la evaluación. Tamaño del lote ({input.size(0)}) no es igual a batch_size ({batch_size}).")
+                break
+
+            # Calcular salida para el modelo base
+            output_vanilla = model(input)
+            # Obtener predicciones para el modelo base
+            _, pred_vanilla = output_vanilla.max(dim=1)
+
+            for name, engine in engines.items():
+                output_engine = engine(input)
+                # Obtener predicciones para el motor
+                _, pred_engine = output_engine.max(dim=1)
+                # Actualizar precisión Top-1
+                correct = pred_engine.eq(target).sum().item()
+                engine_stats[name]['correct'] += correct
+                engine_stats[name]['total'] += input.size(0)
+
+                # Calcular valores cercanos para cada rtol
+                for idx, rtol in enumerate(rtols):
+                    close_values = torch.isclose(output_vanilla, output_engine, atol=rtol, rtol=0)
+                    num_close = close_values.sum().item()
+                    engine_stats[name]['close_counts'][idx] += num_close
+
+    # Preparar la tabla
+    # Crear el encabezado con los rtols utilizados
+    rtols_header = [f"atol {porcentajes[i]}={rtols[i]:.5f}" for i in range(len(porcentajes))]
+    table_header = "| engine | Accuracy (Top1) | " + " | ".join(rtols_header) + " |\n"
+    table_separator = "|--------|" + "----------------|" + "--------|" * len(rtols) + "\n"
+
+    table = table_header + table_separator
+
+    for name in engines.keys():
+        accuracy = 100.0 * engine_stats[name]['correct'] / engine_stats[name]['total']
+        close_percentages = []
+        for count in engine_stats[name]['close_counts']:
+            percentage = 100.0 * count / total_elements
+            close_percentages.append(f"{percentage:.2f}%")
+        table += f"| {name} | {accuracy:.2f}% | " + " | ".join(close_percentages) + " |\n"
+
+    print(table)
+    return
+    """
+
+def latencia(opt):
+    model = load_model(opt, opt.model, opt.weights)
+    model.eval()  # Asegurar que el modelo está en modo de evaluación
+
+    tiempos_procesamiento = []
+    
+    # Recorrer todas las imágenes en el dataset
+    imagenes = sorted(os.listdir(opt.dataset))
+    batch_size = opt.batch_size if hasattr(opt, 'batch_size') else 1
+    
+    for i in range(0, len(imagenes), batch_size):
+        batch_imgs = imagenes[i:i + batch_size]
+        batch_data = []
+        
+        try:
+            for img_name in batch_imgs:
+                img_path = os.path.join(opt.dataset, img_name)
+                data = process_llamas(img_path)  # Preprocesar la imagen
+                batch_data.append(data)
+            batch_data = torch.tensor(batch_data).float()
+
+            start_time = time.time()
+
+            batch_data = batch_data.to(device)
+            with torch.no_grad():
+                output = model(batch_data)  # Realizar la inferencia
+                torch.cuda.synchronize()
+                output = output.cpu()
+                
+            end_time = time.time()
+            
+            tiempos_procesamiento.append(end_time - start_time)
+        except Exception as e:
+            print(f"Error procesando imágenes {batch_imgs}: {e}")
+    
+    if tiempos_procesamiento:
+        if batch_size == 1:
+            # Si el batch size es 1, calcular latencia promedio y máxima
+            latencia_maxima = max(tiempos_procesamiento)
+            latencia_promedio = sum(tiempos_procesamiento) / len(tiempos_procesamiento)
+            return latencia_maxima, latencia_promedio
+        else:
+            # Si el batch size es mayor a 1, calcular throughput en inferencias por segundo
+            throughput = [batch_size / t for t in tiempos_procesamiento if t > 0]
+            throughput_promedio = sum(throughput) / len(throughput)
+            throughput_maximo = max(throughput)
+            return throughput_maximo, throughput_promedio
+    else:
+        return None, None
+
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
     parser.add_argument('--batch_size', default = 1, type=int,help='batch size')
+    parser.add_argument('--dataset', default = 'datasets/img_preprocess', type=str,help='folder to dataset to evaluate latency or thr. images in TIFF format.')
     parser.add_argument('--model', default= 'attunet', type=str, help='modelo a evaluar, puede ser tensorrt, unet o attunet, if compare, use a string separate with a space with the two models to compare.')
     parser.add_argument('--weights', default= 'weights/attunet.pth', type=str, help='path to weights, if compare, use a string separate with a space with the two paths of weights to compare')
     parser.add_argument('--experiment', action='store_true', help='si es experimento ')
     parser.add_argument('--case', default= 'A', type=str, help='condicion de llama, puede ser A, B o C')
     parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')
     parser.add_argument('--compare_all', action='store_true', help='Compara todos los modelos para un solo caso en especifico')
+    parser.add_argument('--latency', action='store_true', help='Realiza una evaluacion de la latencia, si el batch size uno o thr si el batch size es mayor a uno, tomando en cuenta el dataset en el directorio --dataset')
+    parser.add_argument('--closeness', action='store_true', help='Realiza una evaluacion del closeness sobre un ejemplo en una condicion de llama, puede ser A, B o C')
     opt = parser.parse_args()
     return opt
 
@@ -663,6 +830,14 @@ def main(opt):
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
     
+    if opt.latency:
+        l_max,l_ave = latencia(opt)
+        if opt.batch_size > 1:
+            print("Throughput ave: ", l_ave," inf/s")
+        elif opt.batch_size == 1:
+            print("Latenica max: ", l_max," s\nLatenica ave: ", l_ave," s")
+        else:
+            print("Error: Ingrese un batch size valido.")
     if opt.compare_all:
         compare_all(opt)
     elif opt.compare:
@@ -677,7 +852,7 @@ def main(opt):
                 print("Error en la carga de modelos. Revisa las especificaciones.")
 
             compare(opt, model1, model2)
-    else:
+    elif not (opt.latency or opt.closeness):
         if len(opt.model.split()) != 1 or len( opt.weights.split()) != 1:
             print("ERROR: Debes especificar exactamente uno (modelos y pesos) si no va a comparar.")
         else:
