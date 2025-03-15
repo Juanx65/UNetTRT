@@ -649,115 +649,83 @@ def compare_all(opt):
                      unet_fp32, unet_fp16, unet_int8, 
                      attunet_fp32,attunet_fp16,attunet_int8)
 
-def closeness(opt):
-
-    base_model = load_model(opt,(opt.model).split(" ")[0], (opt.weights).split(" ")[0])
-    trt_model = load_model(opt,(opt.model).split(" ")[1], (opt.weights).split(" ")[1])
-
-    """
-    #process_llamas
-
-    ################################################################
-    # Cambiar a modo evaluación
+def closeness(opt, model, engines):
     model.eval()
-
-    # Definir porcentajes del tolerancia segun el maximo valor encontrado (en un percentil del 90%)
     porcentajes = [0.005, 0.01, 0.1, 0.2, 0.5, 1]
-
-    # Inicializar diccionarios para almacenar estadísticas por motor
     engine_stats = {name: {'correct': 0, 'total': 0, 'close_counts': [0]*len(porcentajes)} for name in engines.keys()}
-    total_samples = 0
-    total_elements = 0
-
-    # Dispositivo
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # Coleccionar todas las salidas del modelo base y los motores para calcular el percentil 90
-    outputs_vanilla_list = []
     outputs_all_list = []
+    imagenes = sorted(os.listdir(opt.dataset))
+    
+    for img_name in imagenes:
+        img_path = os.path.join(opt.dataset, img_name)
+        data = process_llamas(img_path)
+        data = torch.tensor(data).float().to(device).unsqueeze(0)
+        if torch.isnan(data).any() or torch.isinf(data).any():
+            continue
+        
+        with torch.no_grad():
+            output_vanilla = model(data)
+        
+        outputs_all_list.append(output_vanilla.cpu())
 
-    # Primero, procesar los datos para coleccionar outputs_vanilla y outputs de los motores
-    with torch.no_grad():
-        for i, (input, target) in enumerate(val_loader):
-            input = input.to(device)
-            target = target.to(device)
-            if input.size(0) != batch_size:
-                print(f"Deteniendo la evaluación. Tamaño del lote ({input.size(0)}) no es igual a batch_size ({batch_size}).")
-                break
+        for name, engine in engines.items():
+            engine.eval()
+            with torch.no_grad():
+                output_engine = engine(data)
+            outputs_all_list.append(output_engine.cpu())
 
-            # Calcular salida para el modelo base
-            output_vanilla = model(input)
-            outputs_vanilla_list.append(output_vanilla.cpu())
-            outputs_all_list.append(output_vanilla.cpu())
-
-            # Calcular salidas para cada motor y agregarlas a outputs_all_list
-            for name, engine in engines.items():
-                output_engine = engine(input)
-                outputs_all_list.append(output_engine.cpu())
-
-            total_samples += input.size(0)
-            total_elements += output_vanilla.numel()
-
-    # Concatenar todas las salidas
-    outputs_vanilla_all = torch.cat(outputs_vanilla_list).flatten()
     outputs_all = torch.cat(outputs_all_list).flatten()
-
-    # Calcular el valor máximo según el percentil 90 utilizando todas las salidas
     max_value = np.percentile(np.abs(outputs_all.numpy()), 90)
-    #max_value = np.max(np.abs(outputs_all.numpy()))
-
-
-    # Calcular los rtols según tu especificación
     rtols = [p * max_value for p in porcentajes]
+    
+    for img_name in imagenes:
+        img_path = os.path.join(opt.dataset, img_name)
+        data = process_llamas(img_path)    
+        data = torch.tensor(data).float().to(device).unsqueeze(0)
+        if torch.isnan(data).any() or torch.isinf(data).any():
+            continue
 
-    # Ahora, procesar los datos nuevamente para calcular las estadísticas por motor
-    with torch.no_grad():
-        for i, (input, target) in enumerate(val_loader):
-            input = input.to(device)
-            target = target.to(device)
-            if input.size(0) != batch_size:
-                print(f"Deteniendo la evaluación. Tamaño del lote ({input.size(0)}) no es igual a batch_size ({batch_size}).")
-                break
+        with torch.no_grad():
+            output_vanilla = model(data)
+        
+        num_elementos_por_imagen = output_vanilla.numel()  # Obtiene el número de elementos en la salida del modelo
 
-            # Calcular salida para el modelo base
-            output_vanilla = model(input)
-            # Obtener predicciones para el modelo base
-            _, pred_vanilla = output_vanilla.max(dim=1)
-
-            for name, engine in engines.items():
-                output_engine = engine(input)
-                # Obtener predicciones para el motor
-                _, pred_engine = output_engine.max(dim=1)
-                # Actualizar precisión Top-1
-                correct = pred_engine.eq(target).sum().item()
-                engine_stats[name]['correct'] += correct
-                engine_stats[name]['total'] += input.size(0)
-
-                # Calcular valores cercanos para cada rtol
-                for idx, rtol in enumerate(rtols):
-                    close_values = torch.isclose(output_vanilla, output_engine, atol=rtol, rtol=0)
-                    num_close = close_values.sum().item()
-                    engine_stats[name]['close_counts'][idx] += num_close
-
-    # Preparar la tabla
-    # Crear el encabezado con los rtols utilizados
+        for name, engine in engines.items():
+            with torch.no_grad():
+                output_engine = engine(data)
+            engine_stats[name]['total'] += 1  # Cuenta el número de imágenes procesadas
+            
+            for idx, rtol in enumerate(rtols):
+                close_values = torch.isclose(output_vanilla, output_engine, atol=rtol, rtol=0)
+                engine_stats[name]['close_counts'][idx] += close_values.sum().item()
+    
     rtols_header = [f"atol {porcentajes[i]}={rtols[i]:.5f}" for i in range(len(porcentajes))]
-    table_header = "| engine | Accuracy (Top1) | " + " | ".join(rtols_header) + " |\n"
-    table_separator = "|--------|" + "----------------|" + "--------|" * len(rtols) + "\n"
-
-    table = table_header + table_separator
-
+    table = "| engine | " + " | ".join(rtols_header) + " |\n" + "|--------" * (len(rtols) + 1) + "|\n"
+    
     for name in engines.keys():
-        accuracy = 100.0 * engine_stats[name]['correct'] / engine_stats[name]['total']
-        close_percentages = []
-        for count in engine_stats[name]['close_counts']:
-            percentage = 100.0 * count / total_elements
-            close_percentages.append(f"{percentage:.2f}%")
-        table += f"| {name} | {accuracy:.2f}% | " + " | ".join(close_percentages) + " |\n"
-
+        total_comparaciones = engine_stats[name]['total'] * num_elementos_por_imagen  # Total de valores comparados
+        if total_comparaciones > 0:
+            close_percentages = [f"{100.0 * count / total_comparaciones:.2f}%" for count in engine_stats[name]['close_counts']]
+        else:
+            close_percentages = ["0.00%" for _ in porcentajes]  # En caso de no haber comparaciones, evitar división por 0
+        
+        table += f"| {name} | " + " | ".join(close_percentages) + " |\n"
+    
     print(table)
-    return
-    """
+    
+def load_closeness(opt):
+    model_unet = load_model(opt,'unet', 'weights/unet.pth')
+    model_attention_unet = load_model(opt,'attunet', 'weights/attunet.pth')
+    unet_fp32 = load_model(opt,'tensorrt', 'weights/unet_fp32.engine')
+    unet_fp16 = load_model(opt,'tensorrt', 'weights/unet_fp16.engine')
+    unet_int8 = load_model(opt,'tensorrt', 'weights/unet_int8.engine')
+
+    attunet_fp32 = load_model(opt,'tensorrt', 'weights/attunet_fp32.engine')
+    attunet_fp16 = load_model(opt,'tensorrt', 'weights/attunet_fp16.engine')
+    attunet_int8 = load_model(opt,'tensorrt', 'weights/attunet_int8.engine')
+
+    closeness(opt, model_unet, {'fp32':unet_fp32,'fp16':unet_fp16,'int8':unet_int8})  
+    closeness(opt, model_attention_unet, {'fp32':attunet_fp32,'fp16':attunet_fp16,'int8':attunet_int8})
 
 def latencia(opt):
     model = load_model(opt, opt.model, opt.weights)
@@ -811,7 +779,6 @@ def latencia(opt):
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--rtol', default = 1e-3, type=float,help='rtol for isclose function')
     parser.add_argument('--batch_size', default = 1, type=int,help='batch size')
     parser.add_argument('--dataset', default = 'datasets/img_preprocess', type=str,help='folder to dataset to evaluate latency or thr. images in TIFF format.')
     parser.add_argument('--model', default= 'attunet', type=str, help='modelo a evaluar, puede ser tensorrt, unet o attunet, if compare, use a string separate with a space with the two models to compare.')
@@ -821,7 +788,7 @@ def parse_opt():
     parser.add_argument('--compare', action='store_true', help='si se desea comparar la red optimizada con trt con la vanilla ')
     parser.add_argument('--compare_all', action='store_true', help='Compara todos los modelos para un solo caso en especifico')
     parser.add_argument('--latency', action='store_true', help='Realiza una evaluacion de la latencia, si el batch size uno o thr si el batch size es mayor a uno, tomando en cuenta el dataset en el directorio --dataset')
-    parser.add_argument('--closeness', action='store_true', help='Realiza una evaluacion del closeness sobre un ejemplo en una condicion de llama, puede ser A, B o C')
+    parser.add_argument('--closeness', action='store_true', help='Realiza una evaluacion del closeness sobre el --dataset. Para todos los modelos posibles.')
     opt = parser.parse_args()
     return opt
 
@@ -838,6 +805,8 @@ def main(opt):
             print("Latenica max: ", l_max," s\nLatenica ave: ", l_ave," s")
         else:
             print("Error: Ingrese un batch size valido.")
+    elif opt.closeness:
+        load_closeness(opt)
     if opt.compare_all:
         compare_all(opt)
     elif opt.compare:
