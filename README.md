@@ -60,16 +60,19 @@ python eval.py
 
 Este script cuenta con los siguientes parámetros:
 
-| Parámetro        | Tipo   | Descripción                                                                        | Valor por defecto       |
-|------------------|--------|------------------------------------------------------------------------------------|-------------------------|
-| `--rtol`        | Float  | Tolerancia relativa para la función `isclose`                                      | `1e-3`                  |
-| `--batch_size`  | Int    | Tamaño del lote (batch)                                                            | `1`                     |
-| `--model`       | String | Modelo a evaluar (`tensorrt`, `unet` o `attunet`); si se compara, usar espacio    | `"attunet"`             |
-| `--weights`     | String | Ruta a los pesos del modelo; si se compara, usar espacio para dos rutas           | `"weights/attunet.pth"` |
-| `--experiment`  | Flag   | Indica si se está ejecutando un experimento                                       | `False`                 |
-| `--case`        | String | Condición de llama (`A`, `B` o `C`)                                               | `"A"`                   |
-| `--compare`     | Flag   | Habilita la comparación entre la red optimizada con TensorRT y la versión base    | `False`                 |
-| `--compare_all` | Flag   | Compara todos los modelos para un solo caso específico                            | `False`                 |
+| Parámetro       | Tipo   | Descripción                                                                                      | Valor por defecto       |
+|----------------|--------|--------------------------------------------------------------------------------------------------|-------------------------|
+| `--batch_size`  | Int    | Tamaño del lote (batch).                                                                        | `1`                     |
+| `--dataset`     | String | Carpeta del dataset para evaluar latencia o throughput; imágenes en formato TIFF.              | `"datasets/img_preprocess"` |
+| `--model`       | String | Modelo a evaluar (`tensorrt`, `unet` o `attunet`); si se compara, usar un espacio entre modelos. | `"attunet"`             |
+| `--weights`     | String | Ruta a los pesos del modelo; si se compara, usar un espacio para indicar dos rutas.           | `"weights/attunet.pth"` |
+| `--experiment`  | Flag   | Indica si se está ejecutando un experimento.                                                   | `False`                 |
+| `--case`        | String | Condición de llama (`A`, `B` o `C`).                                                           | `"A"`                   |
+| `--compare`     | Flag   | Habilita la comparación entre la red optimizada con TensorRT y la versión base.               | `False`                 |
+| `--compare_all` | Flag   | Compara todos los modelos para un solo caso específico.                                       | `False`                 |
+| `--latency`     | Flag   | Evalúa la latencia si el batch size es 1; evalúa throughput si el batch size es mayor a 1.    | `False`                 |
+| `--closeness`   | Flag   | Evalúa la métrica de closeness sobre el dataset para todos los modelos posibles.             | `False`                 |
+
 
 Las condiciones de llama (`--case`) corresponden a los siguientes casos:
 
@@ -115,6 +118,27 @@ Las condiciones de llama (`--case`) corresponden a los siguientes casos:
     ```
 
     Donde X corresponde a una condición de llama (`A`, `B` o `C`).
+
+
+* Para evaluar la latencia de un modelo especifico en un dataset experimental
+
+    ```
+    python eval.py --weights weights/attunet.pth --model attunet --dataset dataset/img_preprocess --latency --batch_size 1
+    ```
+    
+* Para evaluar el throughput de un modelo especifico en un dataset experimental
+
+    ```
+    python eval.py --weights weights/attunet.pth --model attunet --dataset dataset/img_preprocess --latency --batch_size 4
+    ```
+
+    `--latency` inmediatamente calculara el thr. para cualquier batch_size mayor a uno.
+
+* Para evaluar el closeness sobre todos los modelos posibles en un dataset experimenta
+
+    ```
+    python eval.py --closeness
+    ```
 
 ---
 
