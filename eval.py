@@ -149,6 +149,11 @@ def eval_exp_emi(opt, model):
     t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
     for i in range(3):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
+    
+    # Calculate RMSE
+    rmse = np.sqrt(np.mean((t_cgan_caseC - t_emi)**2))
+    print("RMSE: ", rmse)
+
     if opt.case == 'A':
         y_min=1
         y_max= 3.0
@@ -191,7 +196,7 @@ def eval_exp_emi(opt, model):
     print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
     print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
     plt.savefig(f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
-    savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r_emi, "z":z_emi, "T": t_cgan_caseC})
+    #savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r_emi, "z":z_emi, "T": t_cgan_caseC})
     plt.show()
 
 def eval_exp_mae(opt, model):
@@ -228,6 +233,10 @@ def eval_exp_mae(opt, model):
     t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
     for i in range(3):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
+
+    # Calculate RMSE
+    rmse = np.sqrt(np.mean((t_cgan_caseC - t_emi)**2))
+    print("RMSE: ", rmse)
 
     plt.rcParams['figure.figsize'] = [14, 4]
 
@@ -278,7 +287,7 @@ def eval_exp_mae(opt, model):
     fig.colorbar(im6, ticks=MaxNLocator(6))
     fig.tight_layout()
     plt.savefig(f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
-    savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r, "z":z, "T": t_cgan_caseC})
+    #savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r, "z":z, "T": t_cgan_caseC})
 
     plt.show()
     print('Abs. error max:', abs_err.max())
@@ -429,7 +438,8 @@ def compare(opt,model1,model2):
     plt.show()
 
 def axcontourf(ax, r, z, data, title, levels=50, Y_MIN=1, Y_MAX=3.5, CMAP='jet',show_axes=True,ftitle=None):
-    data = np.clip(data, levels[0], levels[-1])  # Recorta los valores fuera del rango
+    if isinstance(levels, list) and len(levels) > 1:
+        data = np.clip(data, levels[0], levels[-1])  # Recorta los valores fuera del rango
     x = ax.contourf(r, z, data, levels, cmap=CMAP)
     ax.set_title(title)
     ax.set_xlim(0, 0.45)
