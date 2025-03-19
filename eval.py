@@ -118,186 +118,144 @@ def eval(opt, model):
     plt.savefig('outputs/img/eval.png')
     plt.show()
 
-def eval_exp_emi(opt, model):
-    print("experiment emi")
-    # LOAD DATA
+def preprocess_data(opt):
+    """
+    Preprocesa los datos de entrada según el caso especificado en opt.case.
+    
+    Args:
+        opt: objeto con la configuración del experimento.
+        
+    Returns:
+        Diccionario con los datos preprocesados.
+    """
     my_data_loader = MyDataLoader()
-    _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
+    _, _, y_mean, y_std, _, _, _ = my_data_loader.load_test_data()
+    
     if opt.case == 'A':
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_A()
+        Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_A()
+    elif opt.case == 'B':
+        Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_B()
+    elif opt.case == 'C':
+        Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
     else:
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_B()
-
-    print('SHAPE',Py_exp_interp.shape, t_emi.shape)
+        raise ValueError(f"Caso {opt.case} no soportado.")
+    
     Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
-
-    # Eval 
-    with torch.no_grad():
-        output = model(Py_exp_interp)
-
-    Py_exp_interp = Py_exp_interp.cpu().numpy()
-
-    print("output shape: ", output.shape)
-
-    t_cgan_caseC = destandarize(output, y_mean, y_std)[0,0,:,:]
-    t_cgan_caseC= t_cgan_caseC.cpu().numpy()
-
-    mask = t_emi<1
+    mask = t_emi < 1
+    
     t_emi = np.ma.masked_where(mask, t_emi)
     t_bemi = np.ma.masked_where(mask, t_bemi)
-    print("t_cgan_caseC shape: ", t_cgan_caseC.shape)
-    t_cgan_caseC = t_cgan_caseC[::-1] #torch.flip(t_cgan_caseC, [0])
-
-    t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
-    for i in range(3):
-        Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
     
-    # Calculate RMSE
-    rmse = root_mean_squared_error(t_emi, t_cgan_caseC)
+    Py_exp_interp = Py_exp_interp.cpu().numpy()
+    
+    for i in range(Py_exp_interp.shape[1]):
+        Py_exp_interp[0, i, :, :] = np.ma.masked_where(mask, Py_exp_interp[0, i, :, :])
+    
+    data = {
+        "Py_exp_interp": Py_exp_interp,
+        "t_emi": t_emi,
+        "t_bemi": t_bemi,
+        "r_emi": r_emi,
+        "z_emi": z_emi,
+        "r": r,
+        "z": z,
+        "y_mean": y_mean,
+        "y_std": y_std,
+    }
+    
+    if opt.case in ['A', 'B']:
+        data["Py"] = Py
+    elif opt.case == 'C':
+        data["Sy_cal"] = Sy_cal
+    
+    return data
+
+def eval_exp_emi(opt, model):
+    print("experiment emi")
+    data = preprocess_data(opt)
+    
+    with torch.no_grad():
+        output = model(torch.tensor(data["Py_exp_interp"]).float().to(device))
+    
+    t_cgan_caseC = destandarize(output, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
+    t_cgan_caseC = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC[::-1])
+
+    rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC)
     print("RMSE: ", rmse)
 
-    if opt.case == 'A':
-        y_min=1
-        y_max= 3.0
-    else:
-        y_min=1
-        y_max= 3.5        
-    plt.rcParams['figure.figsize'] = [14, 4]
-
-    fig, ax = plt.subplots(1,7)
-    axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R', Y_MIN = y_min, Y_MAX = y_max)
-    axcontourf(ax[1],r,z, Py_exp_interp[0,1,:,:][::-1], 'G', Y_MIN = y_min, Y_MAX = y_max)
-    #axcontourf(ax[2],r,z, Py_exp_interp[0,2,:,:][::-1], 'B', Y_MIN = y_min, Y_MAX = y_max)
-    axcontourf(ax[2],r_emi,z_emi, Py, 'Py', Y_MIN = y_min, Y_MAX = y_max)
-
-    im1=axcontourf(ax[3],r_emi,z_emi, t_emi,r'$T_{s}(EMI)$',levels= np.linspace(1500,2100,50), Y_MIN = y_min, Y_MAX = y_max)
-    im2=axcontourf(ax[4],r_emi,z_emi, t_cgan_caseC ,r'$T_{s}(U-Net)$',levels= np.linspace(1500,2100,50), Y_MIN = y_min, Y_MAX = y_max)
-    im3=axcontourf(ax[5],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
-    abs_err = t_cgan_caseC - t_emi
-    im4=axcontourf(ax[6],r,z,abs_err,'$\Delta_t$ U-Net',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
-    abs_err[abs_err>100] = 100
-    abs_err[abs_err<-100] = -100
+    abs_err = t_cgan_caseC - data["t_emi"]
+    abs_err[abs_err > 100] = 100
+    abs_err[abs_err < -100] = -100
     
-    ax[0].set_facecolor("darkblue")  
-    ax[1].set_facecolor("darkblue")  
-    ax[2].set_facecolor("darkblue")
-    ax[3].set_facecolor("darkblue")  
-    ax[4].set_facecolor("darkblue")  
-    ax[5].set_facecolor("darkblue")  
-    ax[6].set_facecolor("darkblue")  
-    fig.colorbar(im1, ticks=MaxNLocator(6))
-    fig.colorbar(im2, ticks=MaxNLocator(6))
-    fig.colorbar(im3, ticks=MaxNLocator(6))
-    fig.colorbar(im4, ticks=MaxNLocator(6))
-    fig.tight_layout()
+    # Definir valores de Y_MIN y Y_MAX
+    y_min, y_max = (1, 3.0) if opt.case == 'A' else (1, 3.5)
+    t_max = 2100
+    
+    # Graficar
+    fig = plt.figure(figsize=(7, 4))
+    gs = GridSpec(1, 5, width_ratios=[0.1,0.2,0.5,0.5,0.5],wspace=0.1,hspace=0.35)
+    axes = [fig.add_subplot(gs[0, i]) for i in range(5)]
 
-    print('Abs. error max:', abs_err.max())
-    print('Abs. error min:', abs_err.min())
-    print('Abs. error mean:', abs_err.mean())
-    print('Abs. error stddev:', abs_err.std())
-    print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
-    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
-    plt.savefig(f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
-    #savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r_emi, "z":z_emi, "T": t_cgan_caseC})
+    axes[1].axis("off")  
+    axes[1].set_frame_on(False)
+    for ax in axes:
+        ax.set_facecolor("darkgrey")
+
+    title = r'$T_{s}$ ' + opt.weights.split("/")[-1].split(".")[0]
+    referencia = axcontourf(axes[2],data["r_emi"],data["z_emi"], data["t_emi"],r'$T_{s}$ EMI',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max) # en este caso el ground truth es MAE
+    axcontourf(axes[3],data["r"],data["z"],t_cgan_caseC,title,levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
+    diferencia = axcontourf(axes[4],data["r"],data["z"],abs_err, r'$\Delta_{T_{s}}$',levels= np.linspace(-100,100,50),CMAP='bwr', Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
+    
+    cbar_ref = fig.colorbar(referencia,cax=axes[0], location='left', ticks=MaxNLocator(6))
+    cbar_ref.ax.yaxis.set_ticks_position('left')
+    fig.colorbar(diferencia, ticks=MaxNLocator(6))
+
+    plt.savefig(f'outputs/img/eval_exp_{title}_Case_{opt.case}.png')
     plt.show()
 
 def eval_exp_mae(opt, model):
-
     print("experiment mae")
-    # LOAD DATA
-    my_data_loader = MyDataLoader()
-    _, _, y_mean, y_std, _, _, _= my_data_loader.load_test_data()
-    if   opt.case == 'C':
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
-    #elif opt.case == 'D':
-    #    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_D()
-
-    print('SHAPE',Py_exp_interp.shape, t_emi.shape, Sy_cal.shape, Sy_cal.max())
-    Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
-
-    # Eval 
+    
+    data = preprocess_data(opt)
+    
     with torch.no_grad():
-        output = model(Py_exp_interp)
-
-    Py_exp_interp = Py_exp_interp.cpu().numpy()
-
-    print("ourput shape: ", output.shape)
-
-    t_cgan_caseC = destandarize(output, y_mean, y_std)[0,0,:,:]
-    t_cgan_caseC= t_cgan_caseC.cpu().numpy()
-
-    mask = t_emi<1
-    t_emi = np.ma.masked_where(mask, t_emi)
-    t_bemi = np.ma.masked_where(mask, t_bemi)
-    print("t_cgan_caseC shape: ", t_cgan_caseC.shape)
-    t_cgan_caseC = t_cgan_caseC[::-1]
-
-    t_cgan_caseC = np.ma.masked_where(mask,t_cgan_caseC)
-    for i in range(3):
-        Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
-
-    # Calculate RMSE
-    rmse = root_mean_squared_error(t_emi, t_cgan_caseC)
+        output = model(torch.tensor(data["Py_exp_interp"]).float().to(device))
+    
+    t_cgan_caseC = destandarize(output, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
+    t_cgan_caseC = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC[::-1])
+    
+    rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC)
     print("RMSE: ", rmse)
 
-    plt.rcParams['figure.figsize'] = [14, 4]
-
+    abs_err = t_cgan_caseC - data["t_emi"]
+    abs_err[abs_err > 100] = 100
+    abs_err[abs_err < -100] = -100
     if opt.case == 'C':
         y_min=1
         y_max=5.5
         t_max = 2100
-    elif opt.case == 'F' or opt.case == 'G':
-        y_min=1
-        y_max=7.6
-        t_max = 2050
-    elif opt.case == 'E':
-        y_min=1
-        y_max=5.0
-        t_max = 2100
-    elif opt.case == 'D':
-        y_min=1
-        y_max=7.6
-        t_max = 2000
 
-        
-    fig, ax = plt.subplots(1,7)
-    im1 = axcontourf(ax[0],r,z, Py_exp_interp[0,0,:,:][::-1], 'R', Y_MIN = y_min, Y_MAX = y_max)
-    im2 = axcontourf(ax[1],r_emi,z_emi, Sy_cal, 'Py', Y_MIN = y_min, Y_MAX = y_max)
-    im3=axcontourf(ax[2],r_emi,z_emi, t_emi,r'$T_{s}$(MAE)',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max)
-    im4=axcontourf(ax[3],r,z, t_bemi,r'$T_{s}$ (BEMI)',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max)
-    im5=axcontourf(ax[4],r,z,t_cgan_caseC,r'$T_{s}$(U-Net)',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max)
-    im6=axcontourf(ax[5],r,z, t_bemi - t_emi,r'$\Delta_t$ BEMI',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
-    abs_err = t_cgan_caseC - t_emi
-    if opt.case == 'D':
-        abs_err[abs_err > 50] -= 20
-    abs_err[abs_err>100] = 100
-    abs_err[abs_err<-100] = -100
-    im3=axcontourf(ax[6],r,z,abs_err,'$\Delta_t$ Att. U-Net',levels= np.linspace(-100,100,50),CMAP='jet', Y_MIN = y_min, Y_MAX = y_max)
+    # Graficar
+    fig = plt.figure(figsize=(7, 4))
+    gs = GridSpec(1, 5, width_ratios=[0.1,0.2,0.5,0.5,0.5],wspace=0.1,hspace=0.35)
+    axes = [fig.add_subplot(gs[0, i]) for i in range(5)]
 
-    ax[0].set_facecolor("darkblue")  
-    ax[1].set_facecolor("darkblue")  
-    ax[2].set_facecolor("darkblue")  
-    ax[3].set_facecolor("darkblue")  
-    ax[4].set_facecolor("darkblue")  
-    ax[5].set_facecolor("darkblue")
-    ax[6].set_facecolor("darkblue")
-    fig.colorbar(im1, ticks=MaxNLocator(6))
-    fig.colorbar(im2, ticks=MaxNLocator(6))
-    fig.colorbar(im3, ticks=MaxNLocator(6))
-    fig.colorbar(im4, ticks=MaxNLocator(6))
-    fig.colorbar(im5, ticks=MaxNLocator(6))
-    fig.colorbar(im6, ticks=MaxNLocator(6))
-    fig.tight_layout()
-    plt.savefig(f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
-    #savemat(f'outputs/mat/ANN_exp_{opt.model}_{opt.case}.mat', {"r":r, "z":z, "T": t_cgan_caseC})
+    axes[1].axis("off")  
+    axes[1].set_frame_on(False)
+    for ax in axes:
+        ax.set_facecolor("darkgrey")
 
+    title = r'$T_{s}$ ' + opt.weights.split("/")[-1].split(".")[0]
+    referencia = axcontourf(axes[2],data["r_emi"],data["z_emi"], data["t_emi"],r'$T_{s}$ MAE',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max) # en este caso el ground truth es MAE
+    axcontourf(axes[3],data["r"],data["z"],t_cgan_caseC,title,levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
+    diferencia = axcontourf(axes[4],data["r"],data["z"],abs_err, r'$\Delta_{T_{s}}$',levels= np.linspace(-100,100,50),CMAP='bwr', Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
+    
+    cbar_ref = fig.colorbar(referencia,cax=axes[0], location='left', ticks=MaxNLocator(6))
+    cbar_ref.ax.yaxis.set_ticks_position('left')
+    fig.colorbar(diferencia, ticks=MaxNLocator(6))
+
+    plt.savefig(f'outputs/img/eval_exp_{title}_Case_{opt.case}.png')
     plt.show()
-    print('Abs. error max:', abs_err.max())
-    print('Abs. error min:', abs_err.min())
-    print('Abs. error mean:', np.nanmean(abs_err))
-    print('Abs. error stddev:', abs_err.std())
-    print('Abs. error %:', np.nanmean(abs_err)*100/t_emi.mean())
-    print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
 
 def root_mean_squared_error(t_emi,t_cgan_caseC):
     def mse(actual, predicted):
