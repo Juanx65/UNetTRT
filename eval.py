@@ -18,6 +18,8 @@ from utils.processing import process_llamas
 from torchvision import transforms
 from PIL import Image
 
+from sklearn.metrics import mean_squared_error
+
 import logging
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
@@ -151,7 +153,7 @@ def eval_exp_emi(opt, model):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
     
     # Calculate RMSE
-    rmse = np.sqrt(np.mean((t_cgan_caseC - t_emi)**2))
+    rmse = root_mean_squared_error(t_emi, t_cgan_caseC)
     print("RMSE: ", rmse)
 
     if opt.case == 'A':
@@ -235,7 +237,7 @@ def eval_exp_mae(opt, model):
         Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
 
     # Calculate RMSE
-    rmse = np.sqrt(np.mean((t_cgan_caseC - t_emi)**2))
+    rmse = root_mean_squared_error(t_emi, t_cgan_caseC)
     print("RMSE: ", rmse)
 
     plt.rcParams['figure.figsize'] = [14, 4]
@@ -296,6 +298,17 @@ def eval_exp_mae(opt, model):
     print('Abs. error stddev:', abs_err.std())
     print('Abs. error %:', np.nanmean(abs_err)*100/t_emi.mean())
     print('Se guardo la imagen en:' + f'outputs/img/eval_exp_{opt.model}_{opt.case}.png')
+
+def root_mean_squared_error(t_emi,t_cgan_caseC):
+    def mse(actual, predicted):
+        differences = actual -  predicted
+        differences[differences > 100] = 0
+        differences[differences < -100] = 0
+        squared_differences = np.square(differences)
+        return np.nanmean(squared_differences)
+    mse_value = mse(t_emi,t_cgan_caseC)
+    rmse = round(np.sqrt(mse_value),2)
+    return rmse
 
 def compare(opt,model1,model2):
     print("compare two models")
