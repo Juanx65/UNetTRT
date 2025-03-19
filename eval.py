@@ -1,8 +1,6 @@
 import torch
 import os
 import numpy as np
-from utils.models.unet import U_Net
-from utils.models.attunet import AttentionUNet
 import matplotlib.pyplot as plt
 from utils.functions import destandarize
 from utils.load_data import MyDataLoader
@@ -11,27 +9,21 @@ import argparse
 import time
 from matplotlib.gridspec import GridSpec
 
-from scipy.io import savemat
-from utils import engine
-
 from utils.processing import process_llamas
-from torchvision import transforms
-from PIL import Image
 
-from sklearn.metrics import mean_squared_error
+from PIL import Image
 
 import logging
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
-train_on_gpu = torch.cuda.is_available()
+from utils.utils import *
 
+train_on_gpu = torch.cuda.is_available()
 if not train_on_gpu:
     print('CUDA is not available. Using CPU')
 else:
     print('CUDA is available. Using GPU')
-
 device = torch.device("cuda:0" if train_on_gpu else "cpu")
-
 os.environ['CUDA_MODULE_LOADING'] = 'LAZY'
 
 # Aumentar tamaño de fuente globalmente
@@ -118,82 +110,34 @@ def eval(opt, model):
     plt.savefig('outputs/img/eval.png')
     plt.show()
 
-def preprocess_data(opt):
-    """
-    Preprocesa los datos de entrada según el caso especificado en opt.case.
-    
-    Args:
-        opt: objeto con la configuración del experimento.
-        
-    Returns:
-        Diccionario con los datos preprocesados.
-    """
-    my_data_loader = MyDataLoader()
-    _, _, y_mean, y_std, _, _, _ = my_data_loader.load_test_data()
-    
-    if opt.case == 'A':
-        Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_A()
-    elif opt.case == 'B':
-        Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_B()
-    elif opt.case == 'C':
-        Py_exp_interp, t_emi, t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
-    else:
-        raise ValueError(f"Caso {opt.case} no soportado.")
-    
-    Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
-    mask = t_emi < 1
-    
-    t_emi = np.ma.masked_where(mask, t_emi)
-    t_bemi = np.ma.masked_where(mask, t_bemi)
-    
-    Py_exp_interp = Py_exp_interp.cpu().numpy()
-    
-    for i in range(Py_exp_interp.shape[1]):
-        Py_exp_interp[0, i, :, :] = np.ma.masked_where(mask, Py_exp_interp[0, i, :, :])
-    
-    data = {
-        "Py_exp_interp": Py_exp_interp,
-        "t_emi": t_emi,
-        "t_bemi": t_bemi,
-        "r_emi": r_emi,
-        "z_emi": z_emi,
-        "r": r,
-        "z": z,
-        "y_mean": y_mean,
-        "y_std": y_std,
-    }
-    
-    if opt.case in ['A', 'B']:
-        data["Py"] = Py
-    elif opt.case == 'C':
-        data["Sy_cal"] = Sy_cal
-    
-    return data
+def eval_exp(opt, model):
 
-def eval_exp_emi(opt, model):
-    print("experiment emi")
-    data = preprocess_data(opt)
-    
+    data = preprocess_data(opt)    
     with torch.no_grad():
         output = model(torch.tensor(data["Py_exp_interp"]).float().to(device))
     
     t_cgan_caseC = destandarize(output, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
     t_cgan_caseC = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC[::-1])
-
+    
     rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC)
     print("RMSE: ", rmse)
 
     abs_err = t_cgan_caseC - data["t_emi"]
-    abs_err[abs_err > 100] = 100
-    abs_err[abs_err < -100] = -100
+    abs_err = np.clip(abs_err, -100, 100)
     
-    # Definir valores de Y_MIN y Y_MAX
-    y_min, y_max = (1, 3.0) if opt.case == 'A' else (1, 3.5)
+    # Definir valores de Y_MIN, Y_MAX y t_max según el tipo de experimento y el caso
+    if opt.case == 'A' or opt.case =='B': #EMI
+        exp_name = "EMI"
+        y_min, y_max = (1, 3.0) if opt.case == 'A' else (1, 3.5)
+    elif opt.case == 'C': #MAE
+        exp_name = "MAE"
+        y_min, y_max = (1, 5.5)
+
     t_max = 2100
-    
+
     # Graficar
     fig = plt.figure(figsize=(7, 4))
-    gs = GridSpec(1, 5, width_ratios=[0.1,0.2,0.5,0.5,0.5],wspace=0.1,hspace=0.35)
+    gs = GridSpec(1, 5, width_ratios=[0.1, 0.2, 0.5, 0.5, 0.5], wspace=0.1, hspace=0.35)
     axes = [fig.add_subplot(gs[0, i]) for i in range(5)]
 
     axes[1].axis("off")  
@@ -201,72 +145,17 @@ def eval_exp_emi(opt, model):
     for ax in axes:
         ax.set_facecolor("darkgrey")
 
-    title = r'$T_{s}$ ' + opt.weights.split("/")[-1].split(".")[0]
-    referencia = axcontourf(axes[2],data["r_emi"],data["z_emi"], data["t_emi"],r'$T_{s}$ EMI',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max) # en este caso el ground truth es MAE
-    axcontourf(axes[3],data["r"],data["z"],t_cgan_caseC,title,levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
-    diferencia = axcontourf(axes[4],data["r"],data["z"],abs_err, r'$\Delta_{T_{s}}$',levels= np.linspace(-100,100,50),CMAP='bwr', Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
+    title = rf'$T_{{s}}$ ' + opt.weights.split("/")[-1].split(".")[0]
+    referencia = axcontourf(axes[2], data["r_emi"], data["z_emi"], data["t_emi"], rf'$T_{{s}}$ {exp_name}', levels=np.linspace(1500, t_max, 50), Y_MIN=y_min, Y_MAX=y_max)
+    axcontourf(axes[3], data["r"], data["z"], t_cgan_caseC, title, levels=np.linspace(1500, t_max, 50), Y_MIN=y_min, Y_MAX=y_max, show_axes=False)
+    diferencia = axcontourf(axes[4], data["r"], data["z"], abs_err, r'$\Delta_{T_{s}}$', levels=np.linspace(-100, 100, 50), CMAP='bwr', Y_MIN=y_min, Y_MAX=y_max, show_axes=False)
     
-    cbar_ref = fig.colorbar(referencia,cax=axes[0], location='left', ticks=MaxNLocator(6))
+    cbar_ref = fig.colorbar(referencia, cax=axes[0], location='left', ticks=MaxNLocator(6))
     cbar_ref.ax.yaxis.set_ticks_position('left')
     fig.colorbar(diferencia, ticks=MaxNLocator(6))
 
-    plt.savefig(f'outputs/img/eval_exp_{title}_Case_{opt.case}.png')
+    plt.savefig(f'outputs/img/eval_experiment_{title}_{opt.case}.pdf', format='pdf', bbox_inches='tight')
     plt.show()
-
-def eval_exp_mae(opt, model):
-    print("experiment mae")
-    
-    data = preprocess_data(opt)
-    
-    with torch.no_grad():
-        output = model(torch.tensor(data["Py_exp_interp"]).float().to(device))
-    
-    t_cgan_caseC = destandarize(output, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
-    t_cgan_caseC = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC[::-1])
-    
-    rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC)
-    print("RMSE: ", rmse)
-
-    abs_err = t_cgan_caseC - data["t_emi"]
-    abs_err[abs_err > 100] = 100
-    abs_err[abs_err < -100] = -100
-    if opt.case == 'C':
-        y_min=1
-        y_max=5.5
-        t_max = 2100
-
-    # Graficar
-    fig = plt.figure(figsize=(7, 4))
-    gs = GridSpec(1, 5, width_ratios=[0.1,0.2,0.5,0.5,0.5],wspace=0.1,hspace=0.35)
-    axes = [fig.add_subplot(gs[0, i]) for i in range(5)]
-
-    axes[1].axis("off")  
-    axes[1].set_frame_on(False)
-    for ax in axes:
-        ax.set_facecolor("darkgrey")
-
-    title = r'$T_{s}$ ' + opt.weights.split("/")[-1].split(".")[0]
-    referencia = axcontourf(axes[2],data["r_emi"],data["z_emi"], data["t_emi"],r'$T_{s}$ MAE',levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max) # en este caso el ground truth es MAE
-    axcontourf(axes[3],data["r"],data["z"],t_cgan_caseC,title,levels=np.linspace(1500,t_max,50), Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
-    diferencia = axcontourf(axes[4],data["r"],data["z"],abs_err, r'$\Delta_{T_{s}}$',levels= np.linspace(-100,100,50),CMAP='bwr', Y_MIN = y_min, Y_MAX = y_max,show_axes=False)
-    
-    cbar_ref = fig.colorbar(referencia,cax=axes[0], location='left', ticks=MaxNLocator(6))
-    cbar_ref.ax.yaxis.set_ticks_position('left')
-    fig.colorbar(diferencia, ticks=MaxNLocator(6))
-
-    plt.savefig(f'outputs/img/eval_exp_{title}_Case_{opt.case}.png')
-    plt.show()
-
-def root_mean_squared_error(t_emi,t_cgan_caseC):
-    def mse(actual, predicted):
-        differences = actual -  predicted
-        differences[differences > 100] = 0
-        differences[differences < -100] = 0
-        squared_differences = np.square(differences)
-        return np.nanmean(squared_differences)
-    mse_value = mse(t_emi,t_cgan_caseC)
-    rmse = round(np.sqrt(mse_value),2)
-    return rmse
 
 def compare(opt,model1,model2):
     print("compare two models")
@@ -407,112 +296,6 @@ def compare(opt,model1,model2):
 
     plt.savefig('outputs/img/compare.png')#, transparent=True)
     plt.show()
-
-def axcontourf(ax, r, z, data, title, levels=50, Y_MIN=1, Y_MAX=3.5, CMAP='jet',show_axes=True,ftitle=None):
-    if isinstance(levels, list) and len(levels) > 1:
-        data = np.clip(data, levels[0], levels[-1])  # Recorta los valores fuera del rango
-    x = ax.contourf(r, z, data, levels, cmap=CMAP)
-    ax.set_title(title)
-    ax.set_xlim(0, 0.45)
-    ax.set_ylim(Y_MIN, Y_MAX)
-    if show_axes:
-        ax.set_xticks(ticks=[0, 0.25])
-        ax.set_xlabel('r (cm)')
-        ax.set_ylabel('z (cm)')
-    else:
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_xticklabels([])
-        ax.set_yticklabels([])
-        ax.set_xlabel('')
-        ax.set_ylabel('')
-    if isinstance(ftitle, str) and ftitle:
-        ax.yaxis.set_label_position('right')
-        ax.yaxis.tick_right()
-        ax.set_ylabel(ftitle, fontsize=16, rotation=-90, labelpad=15,fontweight='bold')
-    return x
-
-def get_model_size_MB(model_path):
-    return os.path.getsize(model_path) / (1024 * 1024) 
-
-def get_parameters_vanilla(model):
-    total_capas = sum(1 for _ in model.modules())
-    total_parametros = sum(p.numel() for p in model.parameters())
-    return total_capas, total_parametros
-
-def get_layers(model_name, model_path):
-    # para que funcione como sudo es necesario correr desde el path del enviroment env/bin/polygraphy
-    if model_name == 'tensorrt':
-        cmd = f"env/bin/polygraphy inspect model {model_path}"
-    else:
-        cmd = f"env/bin/polygraphy inspect model {(model_path).replace('.engine', '.onnx')} --display-as=trt"
-
-    # Ejecuta el comando y captura la salida
-    import subprocess
-    import re
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-
-    # Decodifica la salida a texto
-    output = stdout.decode()
-
-    # Usa una expresión regular para encontrar el número de capas
-    match = re.search(r"---- (\d+) Layer\(s\) ----", output)
-    # Extrae el número de capas si se encuentra el patrón
-    if match:
-        num_layers = int(match.group(1))
-        return num_layers
-    else:
-        print("No se encontró el número de capas")
-        return 0
-
-def get_parametros(model_type, model_path):
-    if model_type == 'tensorrt':
-        cmd = f"env/bin/python utils/param_counter.py --engine ../{model_path}"
-    else:
-        cmd = f"env/bin/onnx_opcounter {(model_path).replace('.engine', '.onnx')}"
-
-    # Ejecuta el comando y captura la salida
-    import subprocess
-    import re
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-
-    # Decodifica la salida a texto
-    output = stdout.decode()
-
-    # Usa una expresión regular para encontrar el número de capas
-    match = re.search(r"Number of parameters in the model: (\d+)", output)
-    if match:
-        num_parameters = int(match.group(1))
-        return num_parameters
-    else:
-        print("No se encontró el número de parametros")
-        return 0
-
-def load_model(opt,model_name, weight):
-    print('----------------------------------------------------------\n')
-    print('Modelo ', model_name, 'path = ', weight,'\n')
-
-    if model_name == 'tensorrt':
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        engine_path = os.path.join(current_directory, weight)
-        model = engine.TRTModule(engine_path, device)
-        model.set_desired(['outputs'])    
-        
-        print("# capas onnx = ",get_layers(model_name,weight))
-        print("# parametro onnx = ",get_parametros(model_name,weight))
-    elif model_name == 'unet' or model_name == 'attunet':
-        model = torch.load(weight)
-        model.to(device)
-        model.eval()
-        print("# capas base = ", get_parameters_vanilla(model)[0])
-        print("# parametros base = ", get_parameters_vanilla(model)[1])
-    else:
-        print(f'ERROR: especifica un modelo válido, opciones: tensorrt, unet, attunet. Modelo dado: {opt.model}')
-        return None
-    print("tamaño = ",get_model_size_MB(weight), " MB")
-    return model
 
 def compare_extended(opt, model_unet, model_attention_unet, 
                      model_unet_trt_fp32, model_unet_trt_fp16, model_unet_trt_int8, 
@@ -812,10 +595,7 @@ def main(opt):
             if model is None:
                 print("Error en la carga del modelo. Revisa las especificaciones.")
             if(opt.experiment):
-                if opt.case == 'A' or opt.case == 'B':
-                    eval_exp_emi(opt, model)
-                else:
-                    eval_exp_mae(opt, model)
+                eval_exp(opt, model)
             else:
                 eval(opt, model) ##  Revisar funcionalidad de eval, parece mal
 
