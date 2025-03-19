@@ -682,9 +682,9 @@ def closeness(opt, model, engines):
     for img_name in imagenes:
         img_path = os.path.join(opt.dataset, img_name)
         data = process_llamas(img_path)
-        data = torch.tensor(data).float().to(device).unsqueeze(0)
-        if torch.isnan(data).any() or torch.isinf(data).any():
-            continue
+        data = torch.tensor([data]).float().to(device)
+        #if torch.isnan(data).any() or torch.isinf(data).any():
+        #    continue
         
         with torch.no_grad():
             output_vanilla = model(data)
@@ -704,9 +704,9 @@ def closeness(opt, model, engines):
     for img_name in imagenes:
         img_path = os.path.join(opt.dataset, img_name)
         data = process_llamas(img_path)    
-        data = torch.tensor(data).float().to(device).unsqueeze(0)
-        if torch.isnan(data).any() or torch.isinf(data).any():
-            continue
+        data = torch.tensor([data]).float().to(device)
+        #if torch.isnan(data).any() or torch.isinf(data).any():
+        #    continue
 
         with torch.no_grad():
             output_vanilla = model(data)
@@ -714,6 +714,7 @@ def closeness(opt, model, engines):
         num_elementos_por_imagen = output_vanilla.numel()  # Obtiene el número de elementos en la salida del modelo
 
         for name, engine in engines.items():
+            engine.eval()
             with torch.no_grad():
                 output_engine = engine(data)
             engine_stats[name]['total'] += 1  # Cuenta el número de imágenes procesadas

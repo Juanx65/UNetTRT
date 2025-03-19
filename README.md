@@ -123,13 +123,13 @@ Las condiciones de llama (`--case`) corresponden a los siguientes casos:
 * Para evaluar la latencia de un modelo especifico en un dataset experimental
 
     ```
-    python eval.py --weights weights/attunet.pth --model attunet --dataset dataset/img_preprocess --latency --batch_size 1
+    python eval.py --weights weights/attunet.pth --model attunet --dataset datasets/img_preprocess --latency --batch_size 1
     ```
     
 * Para evaluar el throughput de un modelo especifico en un dataset experimental
 
     ```
-    python eval.py --weights weights/attunet.pth --model attunet --dataset dataset/img_preprocess --latency --batch_size 4
+    python eval.py --weights weights/attunet.pth --model attunet --dataset datasets/img_preprocess --latency --batch_size 4
     ```
 
     `--latency` inmediatamente calculara el thr. para cualquier batch_size mayor a uno.

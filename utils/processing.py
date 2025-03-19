@@ -118,7 +118,8 @@ def process_llamas(image_dir):
     r, z, Py_exp_interp[1,:,:] = resize_temp(r_exp, z_exp, Py_rgb[1,:,:])
     r, z, Py_exp_interp[2,:,:] = resize_temp(r_exp, z_exp, Py_rgb[2,:,:])
 
-    x_max = np.max([Py_exp_interp])
+    epsilon = 1e-10  # Pequeña constante para evitar división por cero
+    x_max = x_max if x_max > 0 else epsilon
     Py_exp_interp[0,:,:] = Py_exp_interp[0,:,:][::-1]/x_max
     Py_exp_interp[1,:,:] = Py_exp_interp[1,:,:][::-1]/x_max
     Py_exp_interp[2,:,:] = Py_exp_interp[2,:,:][::-1]/x_max
