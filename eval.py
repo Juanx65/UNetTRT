@@ -1,3 +1,4 @@
+#!/usr/bin/env -S bash -c '"`dirname $(dirname $(dirname $0))`/env/bin/python" "$0" "$@"'
 import torch
 import os
 import numpy as np
