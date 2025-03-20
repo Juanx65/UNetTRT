@@ -47,6 +47,7 @@ def preprocess_data(opt):
         Py_exp_interp[0, i, :, :] = np.ma.masked_where(mask, Py_exp_interp[0, i, :, :])
     
     data = {
+        "mask": mask,
         "Py_exp_interp": Py_exp_interp,
         "t_emi": t_emi,
         "t_bemi": t_bemi,

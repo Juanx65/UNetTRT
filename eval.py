@@ -129,11 +129,11 @@ def eval_exp(opt, model):
     if opt.case == 'A' or opt.case =='B': #EMI
         exp_name = "EMI"
         y_min, y_max = (1, 3.0) if opt.case == 'A' else (1, 3.5)
+        t_max = 2200
     elif opt.case == 'C': #MAE
         exp_name = "MAE"
         y_min, y_max = (1, 5.5)
-
-    t_max = 2100
+        t_max = 2100
 
     # Graficar
     fig = plt.figure(figsize=(7, 4))
@@ -159,142 +159,70 @@ def eval_exp(opt, model):
 
 def compare(opt,model1,model2):
     print("compare two models")
-
-    # LOAD DATA
-    my_data_loader = MyDataLoader()
-    _, _, y_mean, y_std, _, _, _ = my_data_loader.load_test_data()
-    if opt.case == 'A':
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_A()
-    elif opt.case == 'B':
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Py, r, z = my_data_loader.load_data_exp_B()
-    elif opt.case == 'C':
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_C()
-    #elif opt.case == 'D':
-    #    Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, Sy_cal, r, z = my_data_loader.load_data_exp_D()     
-    else: # data test
-        Py_exp_interp,t_emi,t_bemi, r_emi, z_emi, t_emi, r, z = my_data_loader.load_data_exp()
-
-    Py_exp_interp = torch.tensor(Py_exp_interp).float().to(device)
-
-    mask = t_emi<1
-    t_emi = np.ma.masked_where(mask, t_emi)
-    t_bemi = np.ma.masked_where(mask, t_bemi)
-
+    data = preprocess_data(opt)    
     #---------------------------  model 1 -------------------------------------#
     with torch.no_grad():
         start_time = time.time()
-        output_1 = model1(Py_exp_interp)
+        output_1 = model1(torch.tensor(data["Py_exp_interp"]).float().to(device))
         end_time = time.time()
-    print(f"Tiempo de ejecución model1: {end_time - start_time} segundos")
-    #print("output 1 shape: ", output_1.shape)
+    print(f"Tiempo de ejecución modelo 1: {end_time - start_time} segundos")
 
-    t_cgan_caseC_1 = destandarize(output_1, y_mean, y_std)[0,0,:,:]
-    t_cgan_caseC_1 = t_cgan_caseC_1.cpu().numpy()
-    #print("t_cgan_caseC 1 shape: ", t_cgan_caseC_1.shape)
-    t_cgan_caseC_1 = t_cgan_caseC_1[::-1]
-    t_cgan_caseC_1 = np.ma.masked_where(mask,t_cgan_caseC_1)
+    t_cgan_caseC_1 = destandarize(output_1, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
+    t_cgan_caseC_1 = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC_1[::-1])
+    
+    rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC_1)
+    print("RMSE 1: ", rmse)
 
     # ----------------- model 2 ---------------------------------------------------#
-
     with torch.no_grad():
         start_time = time.time() 
-        output_2 = model2(Py_exp_interp)
+        output_2 = model2(torch.tensor(data["Py_exp_interp"]).float().to(device))
         end_time = time.time() 
 
-    print(f"Tiempo de ejecución model2: {end_time - start_time} segundos")
-    #print("output 2 shape: ", output_2.shape)
-
-    t_cgan_caseC_2 = destandarize(output_2, y_mean, y_std)[0,0,:,:]
-    t_cgan_caseC_2 = t_cgan_caseC_2.cpu().numpy()
-    #print("t_cgan_caseC 2 shape: ", t_cgan_caseC_2.shape)
-    t_cgan_caseC_2 = t_cgan_caseC_2[::-1]
-    t_cgan_caseC_2 = np.ma.masked_where(mask,t_cgan_caseC_2)
-
-    # ----------------------- --closeness value-------------------------------------#
-
-    #close_values = torch.isclose(output_vnll, output_trt, rtol=opt.rtol).sum().item()
-    close_values = np.isclose(t_cgan_caseC_2, t_cgan_caseC_1, rtol=opt.rtol).sum().item()
-    print(output_2.numel())
-    print("Closeness Value {:.2f} %".format( (close_values / output_2.numel())*100 ))
-
-    import torch.nn.functional as F
-    # ------------------- MSE and RMSE------------------------------------------------#
-
-    # Calcular el Error Medio Cuadrático (MSE)
-    #mse = F.mse_loss(output_vnll, output_trt)
-    mse = np.mean((t_cgan_caseC_2 - t_cgan_caseC_1) ** 2)
-    # Calcular la Raíz del Error Cuadrático Medio (RMSE)
-    #rmse = torch.sqrt(mse)
-    rmse = np.sqrt(mse)
-
-    min_val = np.min(t_cgan_caseC_2)
-    max_val = np.max(t_cgan_caseC_2)
-
-    print(f"El rango de valores de la salida vanilla va de {min_val} a {max_val}")
-
-    print(f"MSE: {mse.item()}")
-    print(f"RMSE: {rmse.item()}")
-
-    #--------------------R2----------------------------------------------------------#
-
-    # Calculando la media de los valores reales
-    mean_y_real = np.mean(t_cgan_caseC_2)
-
-    # Calculando la varianza total (SST)
-    sst = np.sum((t_cgan_caseC_2 - mean_y_real) ** 2)
-
-    # Calculando la varianza explicada (SSR)
-    ssr = np.sum((t_cgan_caseC_1 - mean_y_real) ** 2)
-
-    # Calculando el coeficiente de determinación R^2
-    r2 = ssr / sst
-
-    print(f"R^2: {r2}")
-
-    #--------------------------------------------------------------------------------#
-
-    Py_exp_interp = Py_exp_interp.cpu().numpy()
-    for i in range(3):
-        Py_exp_interp[0,i,:,:] = np.ma.masked_where(mask,Py_exp_interp[0,i,:,:])
+    print(f"Tiempo de ejecución modelo 2: {end_time - start_time} segundos")
+    
+    t_cgan_caseC_2 = destandarize(output_2, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
+    t_cgan_caseC_2 = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC_2[::-1])
+    
+    rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC_2)
+    print("RMSE 2: ", rmse)
     
     #-------------------- PLOTS --------------------------------------------------#
 
     if opt.case == 'A':
         y_min=1
         y_max= 3.0
+        t_max = 2200
     elif opt.case == 'B':
         y_min=1
         y_max= 3.5  
+        t_max = 2200
     elif opt.case == 'C':
         y_min=1
         y_max=5.5
         t_max = 2100
 
-        
-    plt.rcParams['figure.figsize'] = [6, 4]
-    fig, ax = plt.subplots(1,3)
-    imVLLA=axcontourf(ax[0],r,z,t_cgan_caseC_2,r'$T_{s}$(U-Net model 2)',levels=np.linspace(1500,2100,50))
-    imTRT=axcontourf(ax[1],r,z,t_cgan_caseC_1,r'$T_{s}$(U-Net model 1)',levels=np.linspace(1500,2100,50))
+    # Graficar
     abs_err = t_cgan_caseC_1 - t_cgan_caseC_2
-    imDTA=axcontourf(ax[2],r,z,abs_err,'$\Delta_t$ U-Nets',levels= np.linspace(-30,30,50),CMAP='bwr')
-    abs_err[abs_err>100] = 100
-    abs_err[abs_err<-100] = -100
+
+    fig = plt.figure(figsize=(7, 4))
+    gs = GridSpec(1, 5, width_ratios=[0.1, 0.2, 0.5, 0.5, 0.5], wspace=0.1, hspace=0.35)
+    axes = [fig.add_subplot(gs[0, i]) for i in range(5)]
+
+    axes[1].axis("off")  
+    axes[1].set_frame_on(False)
+    for ax in axes:
+        ax.set_facecolor("darkgrey")
+
+    referencia = axcontourf(axes[2], data["r_emi"], data["z_emi"], t_cgan_caseC_1, rf'$T_{{s}}$ model 1', levels=np.linspace(1500, t_max, 50), Y_MIN=y_min, Y_MAX=y_max)
+    axcontourf(axes[3], data["r"], data["z"], t_cgan_caseC_2, rf'$T_{{s}}$ model 2', levels=np.linspace(1500, t_max, 50), Y_MIN=y_min, Y_MAX=y_max, show_axes=False)
+    diferencia = axcontourf(axes[4], data["r"], data["z"], abs_err, r'$\Delta_{T_{s}}$', levels=np.linspace(-100, 100, 50), CMAP='bwr', Y_MIN=y_min, Y_MAX=y_max, show_axes=False)
     
-    ax[0].set_facecolor("darkblue")  
-    ax[1].set_facecolor("darkblue")  
-    ax[2].set_facecolor("darkblue")  
-    fig.colorbar(imVLLA, ticks=MaxNLocator(6))
-    fig.colorbar(imTRT, ticks=MaxNLocator(6))
-    fig.colorbar(imDTA, ticks=MaxNLocator(6))
-    fig.tight_layout()
+    cbar_ref = fig.colorbar(referencia, cax=axes[0], location='left', ticks=MaxNLocator(6))
+    cbar_ref.ax.yaxis.set_ticks_position('left')
+    fig.colorbar(diferencia, ticks=MaxNLocator(6))
 
-    print('Abs. error max:', abs_err.max())
-    print('Abs. error min:', abs_err.min())
-    print('Abs. error mean:', abs_err.mean())
-    print('Abs. error stddev:', abs_err.std())
-    print('Abs. error %:', abs_err.mean()*100/t_emi.mean())
-
-    plt.savefig('outputs/img/compare.png')#, transparent=True)
+    plt.savefig(f'outputs/img/diferencia_modelos_{opt.case}.pdf', format='pdf', bbox_inches='tight')
     plt.show()
 
 def compare_extended(opt, model_unet, model_attention_unet, 
