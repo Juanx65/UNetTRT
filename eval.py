@@ -111,30 +111,65 @@ def eval(opt, model):
     plt.show()
 
 def eval_exp(opt, model):
+    model.eval()
+    # Data experimental de la condicion de llama (ya sea EMI o MAE)
+    data = preprocess_data(opt) 
+    # Definir valores de Y_MIN, Y_MAX y t_max según el tipo de experimento y el caso
+    exp_name = "EMI"
+    if opt.case == 'A':
+        y_min, y_max, t_max = 1, 3.0, 2200
+    elif opt.case == 'B':
+        y_min, y_max, t_max = 1, 3.5, 2200
+    elif opt.case == 'C':
+        y_min, y_max, t_max = 1, 5.5, 2100
+        exp_name = "MAE"
 
-    data = preprocess_data(opt)    
-    with torch.no_grad():
-        output = model(torch.tensor(data["Py_exp_interp"]).float().to(device))
-    
-    t_cgan_caseC = destandarize(output, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
-    t_cgan_caseC = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC[::-1])
-    
-    rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC)
-    print("RMSE: ", rmse)
+    if opt.dataset_experimental:
+        rmse_values = []
+        imagenes = sorted(os.listdir(opt.dataset))
+        for img_name in imagenes:
+            img_path = os.path.join(opt.dataset, img_name)
+            img_data = process_experimental_input(opt, img_path)
+            img_data = torch.tensor([img_data]).float().to(device)
+            if torch.isnan(img_data[0]).any() or torch.isinf(img_data[0]).any():
+                #print("\n-------------------------\ncontinue\n--------------------------------\n")
+                continue
 
+            with torch.no_grad():
+                output = model(img_data)
+            t_cgan_caseC = destandarize(output, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
+            t_cgan_caseC = np.ma.masked_where(data["mask"], t_cgan_caseC[::-1])
+
+            #print("Valores de salida (mín, máx):", t_cgan_caseC.min().item(), t_cgan_caseC.max().item())
+            rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC)
+            rmse_values.append(rmse)
+
+        # Cálculo de estadísticas
+        rmse_values = np.array(rmse_values)
+        rmse_promedio = np.mean(rmse_values)
+        rmse_std = np.std(rmse_values)
+        rmse_max = np.max(rmse_values)
+        rmse_min = np.min(rmse_values)
+
+        print(f"RMSE Promedio: {rmse_promedio:.4f}")
+        print(f"Desviación Estándar del RMSE: {rmse_std:.4f}")
+        print(f"Máximo RMSE: {rmse_max:.4f}")
+        print(f"Mínimo RMSE: {rmse_min:.4f}")
+
+    else:
+        # Realiza una evaluacion unicamente sobre una imagen experimental contenida en data.
+        with torch.no_grad():
+            output = model(torch.tensor(data["Py_exp_interp"]).float().to(device))
+        t_cgan_caseC = destandarize(output, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
+        t_cgan_caseC = np.ma.masked_where(data["mask"], t_cgan_caseC[::-1])
+        
+        rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC)
+        print("RMSE: ", rmse)
+
+    # graficara la ultima figura evaluada, si es que se decide evaluar todas las figuras del conjunto de datos experimental
     abs_err = t_cgan_caseC - data["t_emi"]
     abs_err = np.clip(abs_err, -100, 100)
-    
-    # Definir valores de Y_MIN, Y_MAX y t_max según el tipo de experimento y el caso
-    if opt.case == 'A' or opt.case =='B': #EMI
-        exp_name = "EMI"
-        y_min, y_max = (1, 3.0) if opt.case == 'A' else (1, 3.5)
-        t_max = 2200
-    elif opt.case == 'C': #MAE
-        exp_name = "MAE"
-        y_min, y_max = (1, 5.5)
-        t_max = 2100
-
+            
     # Graficar
     fig = plt.figure(figsize=(7, 4))
     gs = GridSpec(1, 5, width_ratios=[0.1, 0.2, 0.5, 0.5, 0.5], wspace=0.1, hspace=0.35)
@@ -168,7 +203,7 @@ def compare(opt,model1,model2):
     print(f"Tiempo de ejecución modelo 1: {end_time - start_time} segundos")
 
     t_cgan_caseC_1 = destandarize(output_1, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
-    t_cgan_caseC_1 = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC_1[::-1])
+    t_cgan_caseC_1 = np.ma.masked_where(data["mask"], t_cgan_caseC_1[::-1])
     
     rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC_1)
     print("RMSE 1: ", rmse)
@@ -182,7 +217,7 @@ def compare(opt,model1,model2):
     print(f"Tiempo de ejecución modelo 2: {end_time - start_time} segundos")
     
     t_cgan_caseC_2 = destandarize(output_2, data["y_mean"], data["y_std"])[0,0,:,:].cpu().numpy()
-    t_cgan_caseC_2 = np.ma.masked_where(data["t_emi"] < 1, t_cgan_caseC_2[::-1])
+    t_cgan_caseC_2 = np.ma.masked_where(data["mask"], t_cgan_caseC_2[::-1])
     
     rmse = root_mean_squared_error(data["t_emi"], t_cgan_caseC_2)
     print("RMSE 2: ", rmse)
@@ -190,17 +225,11 @@ def compare(opt,model1,model2):
     #-------------------- PLOTS --------------------------------------------------#
 
     if opt.case == 'A':
-        y_min=1
-        y_max= 3.0
-        t_max = 2200
+        y_min, y_max, t_max = 1, 3.0, 2200
     elif opt.case == 'B':
-        y_min=1
-        y_max= 3.5  
-        t_max = 2200
+        y_min, y_max, t_max = 1, 3.5, 2200
     elif opt.case == 'C':
-        y_min=1
-        y_max=5.5
-        t_max = 2100
+        y_min, y_max, t_max = 1, 5.5, 2100
 
     # Graficar
     abs_err = t_cgan_caseC_1 - t_cgan_caseC_2
@@ -482,6 +511,7 @@ def parse_opt():
     parser.add_argument('--compare_all', action='store_true', help='Compara todos los modelos para un solo caso en especifico')
     parser.add_argument('--latency', action='store_true', help='Realiza una evaluacion de la latencia, si el batch size uno o thr si el batch size es mayor a uno, tomando en cuenta el dataset en el directorio --dataset')
     parser.add_argument('--closeness', action='store_true', help='Realiza una evaluacion del closeness sobre el --dataset. Para todos los modelos posibles.')
+    parser.add_argument('--dataset_experimental','-de',action='store_true',help='Hace la evaluacion sobre todo el datset experimental especificaod en --dataset')
     opt = parser.parse_args()
     return opt
 

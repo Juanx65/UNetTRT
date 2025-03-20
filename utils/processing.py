@@ -18,12 +18,9 @@ import numpy as np
 from PIL import Image
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 
 from scipy.interpolate import interp2d
-import scipy.io
-
 
 logging.basicConfig(level=logging.DEBUG,
                     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -39,7 +36,7 @@ INPUT_3 = 'B'
 OUTPUT = 'ts'
 
 def process_llamas(image_dir):
-
+    ## preprocesa las imagenes en img_preprocess, estas son unicamente condicion A, para calibrar int8
     ## PRe PRE procesamiento-------------------------------------------------------#
     x1 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_1 + '.npy')))[20:,:,:]
     x2 = np.load(os.path.abspath(os.path.join(NPY_DIR2, INPUT_2 + '.npy')))[20:,:,:]
