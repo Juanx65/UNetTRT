@@ -328,18 +328,18 @@ def compare_extended(opt, model_unet, model_attention_unet,
         y_min, y_max, t_max = 1, 3.5, 2200
     elif opt.case == 'C':
         y_min, y_max, t_max = 1, 5.5, 2100
-
+ 
     # Plot para UNet
     unet = axcontourf(axes[0][2], r, z, unet_output, 'Modelo Base', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
-    unet_fp32 = axcontourf(axes[0][3], r, z, abs_error(unet_output, unet_trt_fp32_output), '$\Delta_t$ TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
-    unet_fp16 = axcontourf(axes[0][4], r, z, abs_error(unet_output, unet_trt_fp16_output), '$\Delta_t$ TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
-    unet_int8 = axcontourf(axes[0][5], r, z, abs_error(unet_output, unet_trt_int8_output), '$\Delta_t$ TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False,ftitle="U-Net")
+    unet_fp32 = axcontourf(axes[0][3], r, z, abs_error(unet_output, unet_trt_fp32_output), '$\Delta_t$ TRT fp32', levels=np.linspace(-100, 100, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    unet_fp16 = axcontourf(axes[0][4], r, z, abs_error(unet_output, unet_trt_fp16_output), '$\Delta_t$ TRT fp16', levels=np.linspace(-100, 100, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    unet_int8 = axcontourf(axes[0][5], r, z, abs_error(unet_output, unet_trt_int8_output), '$\Delta_t$ TRT int8', levels=np.linspace(-100, 100, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False,ftitle="U-Net")
 
     # Plot para Attention UNet
     attunet = axcontourf(axes[1][2], r, z, attention_unet_output, 'Modelo Base', levels=np.linspace(1500, t_max, 50),Y_MAX=y_max, Y_MIN=y_min)
-    attunet_fp32 = axcontourf(axes[1][3], r, z, abs_error(attention_unet_output, attention_unet_trt_fp32_output), '$\Delta_t$ TRT fp32', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
-    attunet_fp16 = axcontourf(axes[1][4], r, z, abs_error(attention_unet_output, attention_unet_trt_fp16_output), '$\Delta_t$ TRT fp16', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
-    attunet_int8 = axcontourf(axes[1][5], r, z, abs_error(attention_unet_output, attention_unet_trt_int8_output), '$\Delta_t$ TRT int8', levels=np.linspace(-30, 30, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False,ftitle="Att. U-Net")
+    attunet_fp32 = axcontourf(axes[1][3], r, z, abs_error(attention_unet_output, attention_unet_trt_fp32_output), '$\Delta_t$ TRT fp32', levels=np.linspace(-100, 100, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    attunet_fp16 = axcontourf(axes[1][4], r, z, abs_error(attention_unet_output, attention_unet_trt_fp16_output), '$\Delta_t$ TRT fp16', levels=np.linspace(-100, 100, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False)
+    attunet_int8 = axcontourf(axes[1][5], r, z, abs_error(attention_unet_output, attention_unet_trt_int8_output), '$\Delta_t$ TRT int8', levels=np.linspace(-100, 100, 50), CMAP='bwr',Y_MAX=y_max, Y_MIN=y_min,show_axes=False,ftitle="Att. U-Net")
 
     # Colorbars
     cbar_ax_left = fig.add_subplot(gs[:, 0])  # Colorbar izquierdo en ambas filas
